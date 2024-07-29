@@ -1,0 +1,23 @@
+# apply clang-format to all source code in directory
+# find <dir> -iname '*.h' -o -iname '*.cc' | xargs clang-format -i
+
+Language: Cpp
+BasedOnStyle: LLVM
+
+# current formatting style
+IndentWidth: 4
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Inline
+AlwaysBreakTemplateDeclarations: true
+
+# (barely used) hopefully this eliminates line break
+# ColumnLimit: 1000
+# AllowShortFunctionsOnASingleLine: All
+# AllowShortIfStatementsOnASingleLine: true
+# AllowShortLoopsOnASingleLine: true
+# AllowShortCaseLabelsOnASingleLine: true
+# BinPackParameters: true
+# BinPackArguments: true
+# PenaltyBreakBeforeFirstCallParameter: 10000
+# PenaltyBreakString: 10000
+# PenaltyBreakComment: 10000
