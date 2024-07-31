@@ -3,8 +3,8 @@
 // Loss layer validates the prediction results with the actual results to
 // calculate the loss value and the loss gradient for backpropagation.
 
-#include "loss.h"
-#include "common.h"
+#include "common.cuh"
+#include "loss.cuh"
 
 namespace nnv2 {
 
@@ -47,8 +47,8 @@ float CrossEntropyLoss::calculate_loss(const Array *labels) {
 
     const Array *input = prev->get_output();
     set_array_ptr(output, {1});
-
     cross_entropy_loss(output.get(), input, y, cache);
+
     return output->get_vec()[0];
 }
 

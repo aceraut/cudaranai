@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dataset.h"
+#include "dataset.cuh"
 
 #include <string>
 #include <vector>

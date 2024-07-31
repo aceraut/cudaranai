@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common.h"
-#include "layer.h"
+#include "common.cuh"
+#include "layer.cuh"
 
 #include <vector>
 

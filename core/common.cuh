@@ -10,6 +10,7 @@
 
 #include <cuda_runtime.h>
 #include <thrust/device_vector.h>
+#include <thrust/memory.h>
 
 namespace nnv2 {
 
@@ -29,22 +30,24 @@ constexpr float EPS = 1e-8;
         }                                                                      \
     } while (0)
 
-#define CHECK_COND(condition, message)                                              \
+#define CHECK_COND(condition, message)                                         \
     do {                                                                       \
-        if (!(cond)) {                                                         \
+        if (!(condition)) {                                                    \
             std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
                       << std::endl;                                            \
             exit(1);                                                           \
         }                                                                      \
     } while (0)
 
-#define CUDA_CHECK(condition)                                \
-    do {                                                       \
-        cudaError_t error = condition;                           \
-        CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error)); \
+#define CUDA_CHECK(condition)                                                  \
+    do {                                                                       \
+        cudaError_t error = condition;                                         \
+        CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));               \
     } while (0)
 
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
+
+#define RAW_PTR(vec) (thrust::raw_pointer_cast(vec.data()))
 
 //
 // array.cc
@@ -67,10 +70,10 @@ public:
 
     void zero();
 
-    const std::vector<int> &get_shape() const { return shape; }
-
     thrust::device_vector<float> &get_vec() { return vec; }
     const thrust::device_vector<float> &get_vec() const { return vec; }
+
+    const std::vector<int> &get_shape() const { return shape; }
 
 private:
     void check_shape();

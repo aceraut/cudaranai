@@ -1,8 +1,10 @@
-#include "common.h"
+#include "common.cuh"
 
 #include <algorithm>
 #include <functional>
 #include <numeric>
+
+#include <thrust/fill.h>
 
 namespace nnv2 {
 
@@ -48,7 +50,7 @@ Array &Array::operator=(Array &&other) {
 }
 
 void Array::zero() {
-    std::fill(vec.begin(), vec.end(), 0.0);
+    thrust::fill(vec.begin(), vec.end(), 0);
 }
 
 void Array::reshape(const std::vector<int> &_shape) {
@@ -68,7 +70,7 @@ void Array::resize(const std::vector<int> &_shape) {
 void Array::check_shape() {
     int size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    CHECK_EQ(size, vec.size(), "Array: shape mismatched with size");
+    CHECK_EQ(size, vec.size(), "array: mismatch between shape with size");
 }
 
 //

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "dataset.h"
-#include "layer.h"
+#include "dataset.cuh"
+#include "layer.cuh"
 
 #include <memory>
 #include <utility>

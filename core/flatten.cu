@@ -3,7 +3,7 @@
 // first dimension to preserve batch processing), and next layer's input
 // gradient to the original shape.
 
-#include "flatten.h"
+#include "flatten.cuh"
 
 #include <functional>
 #include <numeric>

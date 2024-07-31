@@ -3,12 +3,14 @@
 // distribution of dataset during training and testing phases, with tasks such
 // as loading batch data and shuffle the dataset
 
-#include "dataloader.h"
-#include "common.h"
+#include "common.cuh"
+#include "dataloader.cuh"
 
 #include <algorithm>
 #include <iostream>
 #include <vector>
+
+#include <thrust/copy.h>
 
 namespace nnv2 {
 
@@ -31,14 +33,14 @@ int DataLoader::load_train_batch() {
     int im_stride = h * w;
     for (int i = start; i < end; i++) {
         // train images
-        std::copy(dataset->get_train_images()[i].begin(),
-                  dataset->get_train_images()[i].end(),
-                  output->get_vec().begin() + (i - start) * im_stride);
+        thrust::copy(dataset->get_train_images()[i].begin(),
+                     dataset->get_train_images()[i].end(),
+                     output->get_vec().begin() + (i - start) * im_stride);
 
         // train labels, with one-hot encoding
         int one_hot_index =
             (i - start) * n_labels + (int)dataset->get_train_labels()[i];
-        output_labels->get_vec()[one_hot_index] = 1.0;
+        output_labels->get_vec()[one_hot_index] = 1;
     }
 
     return size;
@@ -63,14 +65,14 @@ int DataLoader::load_test_batch() {
     int im_stride = h * w;
     for (int i = start; i < end; i++) {
         // test images
-        std::copy(dataset->get_test_images()[i].begin(),
-                  dataset->get_test_images()[i].end(),
-                  output->get_vec().begin() + (i - start) * im_stride);
+        thrust::copy(dataset->get_test_images()[i].begin(),
+                     dataset->get_test_images()[i].end(),
+                     output->get_vec().begin() + (i - start) * im_stride);
 
         // test labels, with one-hot encoding
         int one_hot_index =
             (i - start) * n_labels + (int)dataset->get_test_labels()[i];
-        output_labels->get_vec()[one_hot_index] = 1.0;
+        output_labels->get_vec()[one_hot_index] = 1;
     }
 
     return size;

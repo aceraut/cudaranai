@@ -1,7 +1,7 @@
-#include "activation.h"
-#include "common.h"
-#include "loss.h"
-#include "test_utils.h"
+#include "activation.cuh"
+#include "common.cuh"
+#include "loss.cuh"
+#include "test_utils.cuh"
 
 #include <iostream>
 #include <vector>
@@ -13,8 +13,7 @@ void test_relu_forward() {
     Array output({1, 1, 4, 3});
 
     relu_forward(&output, &input);
-    check_equal_vecs(output.get_vec(), std::vector<float>({0, 2, 0, 4, 0, 6, 0,
-                                                           8, 0, 10, 0, 12}));
+    check_equal_vecs(output.get_vec(), {0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12});
 
     std::cout << "test_relu_forward: Passed" << std::endl;
 }
@@ -25,9 +24,8 @@ void test_relu_backward() {
     Array input_grad({1, 1, 4, 3});
 
     relu_backward(&input_grad, &output_grad, &input);
-    check_equal_vecs(
-        input_grad.get_vec(),
-        std::vector<float>({0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12}));
+    check_equal_vecs(input_grad.get_vec(),
+                     {0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12});
 
     std::cout << "test_relu_backward: Passed" << std::endl;
 }
@@ -72,6 +70,8 @@ void test_log_softmax_trip() {
     Array input_grad({3, 3});
     log_softmax_backward(&input_grad, &loss_grad, &input);
     print_vec(input_grad.get_vec());
+
+    std::cout << "test_logsoftmax_trip: DIY!" << std::endl;
 }
 
 int main() {

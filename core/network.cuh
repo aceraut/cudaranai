@@ -1,10 +1,10 @@
 #pragma once
 
-#include "common.h"
-#include "dataloader.h"
-#include "layer.h"
-#include "loss.h"
-#include "optimizer.h"
+#include "common.cuh"
+#include "dataloader.cuh"
+#include "layer.cuh"
+#include "loss.cuh"
+#include "optimizer.cuh"
 
 #include <memory>
 #include <utility>
@@ -24,7 +24,7 @@ public:
 private:
     void train_epoch();
 
-    std::pair<int, int> top1_accuracy(const Array *preds, const Array *results);
+    std::pair<int, int> top1_accuracy(const Array *preds, const Array *y);
 
     std::vector<std::unique_ptr<Layer>> layers;
 

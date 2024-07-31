@@ -4,13 +4,15 @@
 // layers for constructing the neural network, a DataLoader that acts as
 // the data provider, the Loss object, an optimizer to update the parameters.
 
-#include "network.h"
-#include "common.h"
+#include "common.cuh"
+#include "network.cuh"
 
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <utility>
+
+#include <thrust/extrema.h>
 
 namespace nnv2 {
 
@@ -127,13 +129,13 @@ std::pair<int, int> Network::top1_accuracy(const Array *preds, const Array *y) {
     for (int k = 0; k < batch_size; k++) {
         // find label with highest distribution in prediction batch
         auto pred_start = preds->get_vec().begin() + k * labels;
-        auto pred_top1 = std::max_element(pred_start, pred_start + labels);
+        auto pred_top1 = thrust::max_element(pred_start, pred_start + labels);
         int pred_top1_idx = (int)(pred_top1 - pred_start);
 
         // do the same with actual result batch
         auto result_start = y->get_vec().begin() + k * labels;
         auto result_top1 =
-            std::max_element(result_start, result_start + labels);
+            thrust::max_element(result_start, result_start + labels);
         int result_top1_idx = (int)(result_top1 - result_start);
 
         if (pred_top1_idx == result_top1_idx) {

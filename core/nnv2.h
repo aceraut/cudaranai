@@ -1,19 +1,19 @@
 #pragma once
 
-#include "common.h"
+#include "common.cuh"
 
-#include "dataset.h"
-#include "initializer.h"
-#include "layer.h"
-#include "loss.h"
-#include "network.h"
-#include "optimizer.h"
+#include "dataset.cuh"
+#include "initializer.cuh"
+#include "layer.cuh"
+#include "network.cuh"
+#include "optimizer.cuh"
 
-#include "activation.h"
-#include "conv.h"
-#include "dataloader.h"
-#include "flatten.h"
-#include "linear.h"
-#include "maxpool.h"
+#include "activation.cuh"
+#include "conv.cuh"
+#include "dataloader.cuh"
+#include "flatten.cuh"
+#include "linear.cuh"
+#include "loss.cuh"
+#include "maxpool.cuh"
 
-#include "mnist.h"
+#include "mnist.cuh"

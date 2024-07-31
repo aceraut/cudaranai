@@ -5,8 +5,8 @@
 // so far from this thing is that there are 60000 samples for training and
 // 10000 more for testing.
 
-#include "mnist.h"
-#include "common.h"
+#include "common.cuh"
+#include "mnist.cuh"
 
 #include <cmath>
 #include <cstdlib>

@@ -1,6 +1,6 @@
-#include "dataloader.h"
-#include "mnist.h"
-#include "test_utils.h"
+#include "dataloader.cuh"
+#include "mnist.cuh"
+#include "test_utils.cuh"
 
 #include <iostream>
 #include <string>

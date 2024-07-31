@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common.h"
-#include "initializer.h"
-#include "layer.h"
+#include "common.cuh"
+#include "initializer.cuh"
+#include "layer.cuh"
 
 #include <memory>
 #include <vector>
@@ -22,8 +22,8 @@ private:
     int in_feats;
     int out_feats;
 
-    std::unique_ptr<Array> weight;
-    std::unique_ptr<Array> weight_grad;
+    std::unique_ptr<Array> filter;
+    std::unique_ptr<Array> filter_grad;
     std::unique_ptr<Array> bias;
     std::unique_ptr<Array> bias_grad;
 
@@ -31,11 +31,11 @@ private:
 };
 
 // for testing purpose, local functions are defined here
-void linear_forward(Array *output, const Array *input, const Array *weight);
+void linear_forward(Array *output, const Array *input, const Array *filter);
 void linear_forward_bias(Array *output, const Array *bias);
 
-void linear_backward(Array *input_grad, Array *weight_grad, const Array *input,
-                     const Array *weight, const Array *output_grad,
+void linear_backward(Array *input_grad, Array *filter_grad, const Array *input,
+                     const Array *filter, const Array *output_grad,
                      ArrayMap &cache);
 void linear_backward_bias(Array *bias_grad, const Array *output_grad);
 

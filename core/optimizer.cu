@@ -1,8 +1,10 @@
-#include "optimizer.h"
-#include "common.h"
+#include "common.cuh"
+#include "optimizer.cuh"
 
 #include <cmath>
 #include <memory>
+
+#include <cuda_runtime.h>
 
 namespace nnv2 {
 
@@ -12,7 +14,7 @@ namespace nnv2 {
 void SGD::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
         CHECK_EQ(weight->get_shape(), grad->get_shape(),
-                 "weight shape in parameter mismatched with its gradient");
+                 "shape mismatch between weight and gradient");
 
         weights.push_back(weight);
         grads.push_back(grad);
@@ -22,27 +24,51 @@ void SGD::add_parameters(std::vector<Param> params) {
     }
 }
 
+__global__ void sgd_kernel(int size, float *weight, const float *grad, float lr,
+                           float decay) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float g = grad[idx] + decay * weight[idx];
+        weight[idx] -= lr * g;
+    }
+}
+
 static void sgd_single(Array *weight, const Array *grad, float lr,
                        float decay) {
-    for (int i = 0; i < grad->get_vec().size(); i++) {
-        float &w = weight->get_vec()[i];
-        float g = grad->get_vec()[i] + decay * w;
-        w -= lr * g;
+    int size = weight->get_vec().size();
+    int grid_size = ceil((float)size / BLOCK_SIZE);
+
+    float *weight_raw = RAW_PTR(weight->get_vec());
+    const float *grad_raw = RAW_PTR(grad->get_vec());
+
+    sgd_kernel<<<grid_size, BLOCK_SIZE>>>(size, weight_raw, grad_raw, lr,
+                                          decay);
+    CUDA_POST_KERNEL_CHECK;
+}
+
+__global__ void sgd_momentum_kernel(int size, float *weight, const float *grad,
+                                    float *velocity, float lr, float decay,
+                                    float momentum) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float g = grad[idx] + decay * weight[idx];
+        velocity[idx] = momentum * velocity[idx] + g;
+        weight[idx] -= lr * velocity[idx];
     }
 }
 
 static void sgd_single(Array *weight, const Array *grad, Array *velocity,
                        float lr, float decay, float momentum) {
-    for (int i = 0; i < grad->get_vec().size(); i++) {
-        float &w = weight->get_vec()[i];
-        float &v = velocity->get_vec()[i];
-        float g = grad->get_vec()[i] + decay * w;
+    int size = weight->get_vec().size();
+    int grid_size = ceil((float)size / BLOCK_SIZE);
 
-        // update velocity
-        v = momentum * v + g;
-        // update weight
-        w -= lr * v;
-    }
+    float *weight_raw = RAW_PTR(weight->get_vec());
+    float *velocity_raw = RAW_PTR(velocity->get_vec());
+    const float *grad_raw = RAW_PTR(grad->get_vec());
+
+    sgd_momentum_kernel<<<grid_size, BLOCK_SIZE>>>(
+        size, weight_raw, grad_raw, velocity_raw, lr, decay, momentum);
+    CUDA_POST_KERNEL_CHECK;
 }
 
 void SGD::update_parameters() {
@@ -63,7 +89,7 @@ void SGD::update_parameters() {
 void RMSProp::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
         CHECK_EQ(weight->get_shape(), grad->get_shape(),
-                 "weight shape in parameter mismatched with its gradient");
+                 "shape mismatch between weight and gradient");
 
         weights.push_back(weight);
         grads.push_back(grad);
@@ -71,19 +97,30 @@ void RMSProp::add_parameters(std::vector<Param> params) {
     }
 }
 
+__global__ void rmsprop_kernel(int size, float *weight, const float *grad,
+                               float *mean_sqr_grad, float lr, float decay,
+                               float beta) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float g = grad[idx] + decay * weight[idx];
+        mean_sqr_grad[idx] = beta * mean_sqr_grad[idx] + (1 - beta) * g * g;
+        weight[idx] -= g * lr / (sqrtf(mean_sqr_grad[idx]) + EPS);
+    }
+}
+
 static void rmsprop_single(Array *weight, const Array *grad,
                            Array *mean_sqr_grad, float lr, float decay,
                            float beta) {
-    for (int i = 0; i < grad->get_vec().size(); i++) {
-        float &w = weight->get_vec()[i];
-        float &e = mean_sqr_grad->get_vec()[i];
-        float g = grad->get_vec()[i] + decay * w;
+    int size = weight->get_vec().size();
+    int grid_size = ceil((float)size / BLOCK_SIZE);
 
-        // Update accumulated squared gradient
-        e = beta * e + (1 - beta) * g * g;
-        // Update weight
-        w -= g * lr / (sqrtf(e) + EPS);
-    }
+    float *weight_raw = RAW_PTR(weight->get_vec());
+    float *mean_sqr_grad_raw = RAW_PTR(mean_sqr_grad->get_vec());
+    const float *grad_raw = RAW_PTR(grad->get_vec());
+
+    rmsprop_kernel<<<grid_size, BLOCK_SIZE>>>(
+        size, weight_raw, grad_raw, mean_sqr_grad_raw, lr, decay, beta);
+    CUDA_POST_KERNEL_CHECK;
 }
 
 void RMSProp::update_parameters() {
@@ -100,7 +137,7 @@ void RMSProp::update_parameters() {
 void Adam::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
         CHECK_EQ(weight->get_shape(), grad->get_shape(),
-                 "weight shape in parameter mismatched with its gradient");
+                 "shape mismatch between weight and gradient");
 
         weights.push_back(weight);
         grads.push_back(grad);
@@ -109,27 +146,39 @@ void Adam::add_parameters(std::vector<Param> params) {
     }
 }
 
+__global__ void adam_kernel(int size, float *weight, const float *grad,
+                            float *mean_grad, float *mean_sqr_grad, float lr,
+                            float decay, float beta1, float beta2,
+                            float beta1_pow, float beta2_pow) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float g = grad[idx] + decay * weight[idx];
+        mean_grad[idx] = beta1 * mean_grad[idx] + (1 - beta1) * g;
+        mean_sqr_grad[idx] = beta2 * mean_sqr_grad[idx] + (1 - beta2) * g * g;
+
+        float m1_norm = mean_grad[idx] / (1 - beta1_pow);
+        float m2_norm = mean_sqr_grad[idx] / (1 - beta2_pow);
+        weight[idx] -= lr * m1_norm / (sqrtf(m2_norm) + EPS);
+    }
+}
+
 // poor Adam :(
 static void adam_single(Array *weight, const Array *grad, Array *mean_grad,
                         Array *mean_sqr_grad, float lr, float decay,
                         float beta1, float beta2, float beta1_pow,
                         float beta2_pow) {
-    for (int i = 0; i < grad->get_vec().size(); i++) {
-        float &w = weight->get_vec()[i];
-        float &m1 = mean_grad->get_vec()[i];
-        float &m2 = mean_sqr_grad->get_vec()[i];
-        float g = grad->get_vec()[i] + decay * w;
+    int size = weight->get_vec().size();
+    int grid_size = ceil((float)size / BLOCK_SIZE);
 
-        // Update accumulated gradient
-        m1 = beta1 * m1 + (1 - beta1) * g;
-        // Update accumulated squared gradient
-        m2 = beta2 * m2 + (1 - beta2) * g * g;
-        // Get bias corrected m1 and m2
-        float m1_norm = m1 / (1 - beta1_pow);
-        float m2_norm = m2 / (1 - beta2_pow);
-        // Update weight
-        w -= lr * m1_norm / (sqrtf(m2_norm) + EPS);
-    }
+    float *weight_raw = RAW_PTR(weight->get_vec());
+    float *mean_grad_raw = RAW_PTR(mean_grad->get_vec());
+    float *mean_sqr_grad_raw = RAW_PTR(mean_sqr_grad->get_vec());
+    const float *grad_raw = RAW_PTR(grad->get_vec());
+
+    adam_kernel<<<grid_size, BLOCK_SIZE>>>(
+        size, weight_raw, grad_raw, mean_grad_raw, mean_sqr_grad_raw, lr, decay,
+        beta1, beta2, beta1_pow, beta2_pow);
+    CUDA_POST_KERNEL_CHECK;
 }
 
 void Adam::update_parameters() {

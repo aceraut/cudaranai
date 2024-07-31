@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common.h"
+#include "common.cuh"
 
 #include <memory>
 #include <stdexcept>
