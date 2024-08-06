@@ -27,7 +27,7 @@ if(BUILD_MOCKS)
     # Add test executables
     foreach(mock_source ${MOCK_SOURCES})
         get_filename_component(mock_name ${mock_source} NAME_WE)
-        cuda_add_executable(${mock_name} ${mock_source})
+        add_executable(${mock_name} ${mock_source})
         target_link_libraries(${mock_name} PRIVATE core_lib)
     endforeach()
 endif()
