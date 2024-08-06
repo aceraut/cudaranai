@@ -1,7 +1,7 @@
 // Epoch: 30, Batch size: 128
 // Init: Kaiming Uniform, Loss: LogSoftmax-NLLLoss, Optimizer: RMSProp
 
-#include "nnv2.h"
+#include "nnv2.cuh"
 
 #include <iostream>
 #include <memory>

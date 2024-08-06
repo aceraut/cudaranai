@@ -74,7 +74,8 @@ void Array::check_shape() {
 }
 
 //
-// functions that help initialize Array objects from smart pointers or ArrayMap
+// Functions that help initialize Array objects from smart pointers or ArrayMap
+//
 void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape) {
     if (ptr.get() == nullptr) {
         ptr.reset(new Array(shape));

@@ -73,7 +73,7 @@ public:
     thrust::device_vector<float> &get_vec() { return vec; }
     const thrust::device_vector<float> &get_vec() const { return vec; }
 
-    const std::vector<int> &get_shape() const { return shape; }
+    const std::vector<int> &get_shape() const { return shape; } 
 
 private:
     void check_shape();
@@ -82,13 +82,17 @@ private:
     std::vector<int> shape;
 };
 
+//
+// Functions that help initialize Array objects from smart pointers or ArrayMap
+//
+
 // Initialzing Array from smart pointer
 void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 
 // As several functions in the training process require temporary Array objects,
 // and they can be called multiple times if the size of train data is large,
-// it's better to reuse these temporary Array objects instead of creating new
-// ones on every call
+// it's better to cache these temporary Array objects instead of creating new
+// ones on every call.
 using ArrayMap = std::unordered_map<std::string, std::unique_ptr<Array>>;
 
 void set_array_cache(ArrayMap &map, std::string key,
@@ -98,6 +102,7 @@ void set_array_cache(ArrayMap &map, std::string key,
 // mathfunc.cc
 //
 // Math operations on Array objects
+//
 
 // Element-wise addition of 2 arrays
 void func_add(Array *output, const Array *input1, const Array *input2);
@@ -142,9 +147,9 @@ void func_mean(Array *output, const Array *input, int axis, bool reduce = true);
 //
 // optimizer.cc
 //
-// Data type representing a pair of parameter and gradient Array
-// Used by neural network layers to pass their parameters and gradients to an
-// Optimizer, where parameters are updated after each training step
+// A pair of weight array and gradient array, used by Optimizer to recalculate
+// the weight.
+//
 using Param = std::pair<Array *, Array *>;
 
 } // namespace nnv2

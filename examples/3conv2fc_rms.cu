@@ -1,7 +1,6 @@
-// https://github.com/hardmaru/pytorch_notebooks/blob/master/mnist_es/pytorch_mnist_mini_adam.ipynb
-// 2 conv + 1 linear + Adam with ~11k parameters
+// Custom network with 3 conv + 2 linear (~193k parameters)
 
-#include "nnv2.h"
+#include "nnv2.cuh"
 
 #include <iostream>
 #include <memory>
@@ -20,22 +19,27 @@ int main(int argc, char **argv) {
     Network net;
     std::unique_ptr<Initializer> init = std::make_unique<XavierUniform>();
 
-    net.add(new Conv2D(1, 8, 28, 28, 2, 2, 5, 5, 1, 1, init.get()));
+    net.add(new Conv2D(1, 32, 28, 28, 0, 0, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
     net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
-    net.add(new Conv2D(8, 16, 14, 14, 2, 2, 5, 5, 1, 1, init.get()));
+    net.add(new Conv2D(32, 64, 12, 12, 0, 0, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
     net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
+    net.add(new Conv2D(64, 128, 4, 4, 0, 0, 3, 3, 1, 1, init.get()));
+    net.add(new ReLU);
     net.add(new Flatten);
-    net.add(new Linear(16 * 7 * 7, 10, init.get()));
+    net.add(new Linear(512, 128, init.get()));
+    net.add(new ReLU);
+    net.add(new Linear(128, 10, init.get()));
+    net.add(new ReLU);
     net.add(new LogSoftmax);
 
     std::cout << "Network setup complete" << std::endl;
 
     std::unique_ptr<DataLoader> loader =
-        std::make_unique<DataLoader>(new Mnist(data_path), 1000);
+        std::make_unique<DataLoader>(new Mnist(data_path), 128);
     std::unique_ptr<Loss> loss = std::make_unique<NLLLoss>();
-    std::unique_ptr<Optimizer> optim = std::make_unique<Adam>(0.002);
+    std::unique_ptr<Optimizer> optim = std::make_unique<RMSProp>(0.003, 1e-3);
 
     net.init(loader.get(), loss.get(), optim.get());
     net.train(30, true);

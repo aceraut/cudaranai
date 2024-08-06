@@ -1,5 +1,3 @@
-// This file implements multiple types of activation layers
-
 #include "activation.cuh"
 #include "common.cuh"
 
@@ -14,10 +12,10 @@
 
 namespace nnv2 {
 
+//
 // ReLU
 //
-// ReLU activation: R(x) = max(0, x)
-// ReLU derivative: dR/dx = (x > 0) ? 0 : 1
+
 void relu_forward(Array *output, const Array *input) {
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
              "relu_forward: size mismatch between input and output");
@@ -51,10 +49,10 @@ void ReLU::backward() {
     relu_backward(output_grad, output_grad, input);
 }
 
+//
 // Sigmoid
 //
-// Sigmoid activation: S(x) = 1 / (1 + e^(-x))
-// Sigmoid derivative: dS/dx = (1 - S(x)) * S(x)
+
 void sigmoid_forward(Array *output, const Array *input) {
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
              "sigmoid_forward: size mismatch between input and output");
@@ -92,9 +90,10 @@ void Sigmoid::backward() {
     sigmoid_backward(output_grad, output_grad, input);
 }
 
+//
 // Tanh
 //
-// Tanh derivative: dtanh/dx = 1 - tanh(x)^2
+
 void tanh_forward(Array *output, const Array *input) {
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
              "tanh_forward: size mismatch between input and output");
@@ -131,10 +130,10 @@ void Tanh::backward() {
     tanh_backward(output_grad, output_grad, input);
 }
 
+//
 // Softmax
 //
-// This is typically used as the last layer of a neural network, normalizing
-// output into probability distribution for loss evaluation
+
 __global__ void softmax_forward_kernel(int size, float *output,
                                        const float *input, int stride) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -195,7 +194,7 @@ void Softmax::backward() {
 //
 // LogSoftmax
 //
-// Similar to softmax, just with log values as output instead of logits
+
 __global__ void log_softmax_forward_kernel(int size, float *output,
                                            const float *input, int stride) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;

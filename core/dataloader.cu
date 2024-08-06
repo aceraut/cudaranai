@@ -89,6 +89,7 @@ bool DataLoader::has_next_test_batch() {
 void DataLoader::reset(bool shuffle) {
     train_data_offset = 0;
     test_data_offset = 0;
+
     if (shuffle) {
         dataset->shuffle_train_data();
     }

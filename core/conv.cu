@@ -1,18 +1,8 @@
 // This file implements the Convolution layer using the im2col technique
 //
-// The im2col technique involves transforming the input image into a
+// The im2col technique involves unrolling the input image into a
 // representation where the convolution operation can be efficiently performed
 // using matrix multiplication with the filter.
-//
-// Specifically speaking, given:
-// - The shape of the input image is (i_h, i_w)
-// - The shape of the output image is (o_h, o_w)
-// - The shape of the filter is (k_h, k_w)
-//
-// In the im2col technique, the input image is transformed into an unrolled
-// representation with shape (k_h * k_w, o_h * o_w). Each column in this
-// transformed array is the flattened representation of a section of the input
-// image that intersects with the filter.
 
 #include "common.cuh"
 #include "conv.cuh"
@@ -189,20 +179,14 @@ void conv_forward(Array *output, const Array *input, Array *col, Array *filter,
     int filter_w = filter->get_shape()[3];
 
     // Cols = im2col(X)
-    // X: shape (n, i_f, i_h, i_w)
     im2col(input, col, pad_h, pad_w, filter_h, filter_w, stride_w, stride_h);
-
-    // Y = K * Cols
-    // At this point, the shapes of the involved arrays are
-    // Y:    shape (n,   o_f, o_h, o_w)
-    // K:    shape (o_f, i_f, k_h, k_w)
-    // Cols: shape (n, i_f * k_h * k_w, o_h * o_w)
 
     // reshape K to (o_f, i_f * k_h * k_w)
     filter->reshape({out_feats, in_feats * filter_h * filter_w});
     // reshape Y to (n, o_f, o_h * o_w)
     output->reshape({batch_size, out_feats, out_h * out_w});
-    // calculate Y = K * Cols
+
+    // Y = K * Cols
     func_matmul(output, filter, col, 1);
 
     // recover shape
@@ -286,12 +270,6 @@ void conv_backward(Array *input_grad, Array *filter_grad, Array *output_grad,
     //    dL/dCols = K^T * dL/dY
     //    dL/dX = col2im(dL/dCols)
 
-    // Calculate dL/dK = dL/dY * Cols^T
-    // At this point, the shapes of the involved arrays are
-    // dL/dK:   shape (o_f, i_f, k_h, k_w)
-    // dL/dY:   shape (n, o_f, o_h, o_w)
-    // Cols^T:  shape (n, o_h * o_w, i_f * k_h * k_w)
-
     // reshape dL/dY to (n, o_f, o_h * o_w)
     output_grad->reshape({batch_size, out_feats, out_h * out_w});
 
@@ -307,18 +285,10 @@ void conv_backward(Array *input_grad, Array *filter_grad, Array *output_grad,
     func_matmul(cache["filter_grad_unfolded"].get(), output_grad,
                 cache["col_t"].get());
 
-    // dL/dK is the sum of dL/dY * Cols^T along the batch
-    // Since currently dL/dY * Cols^T shape is (n, o_f, i_f * k_h * k_w),
-    // reshape dL/dY to (n, o_f, i_f, k_h, k_w)
+    // dL/dK = sum(dL/dY * Cols^T) along the batch
     cache["filter_grad_unfolded"]->reshape(
         {batch_size, out_feats, in_feats, filter_h, filter_w});
     func_sum(filter_grad, cache["filter_grad_unfolded"].get(), 0);
-
-    // Calculate dL/dX from dL/dCols = K^T * dL/dY
-    // At this point, the shapes of the involved arrays are
-    // dL/dCols: shape (n, i_f * k_h * k_w, o_h * o_w)
-    // K:        shape (o_f, i_f, k_h, k_w)
-    // dL/dY:    shape (n, o_f, o_h, o_w) => (n, o_f, o_h * o_w)
 
     // K^T
     // reshape K to (o_f, i_f * k_h * k_w)

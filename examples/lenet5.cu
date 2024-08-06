@@ -5,7 +5,7 @@
 // Epoch: 30, Batch size: 32
 // Init: LeCun Uniform, Loss: Softmax-CrossEntropy, Optimizer: SGD
 
-#include "nnv2.h"
+#include "nnv2.cuh"
 
 #include <iostream>
 #include <memory>
