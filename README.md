@@ -1,9 +1,6 @@
-Convolutional neural network from scratch (well it does have dependencies but
-technically they're pre-installed) in CUDA/C++. The implementation is not
-blazingly fast, however, because of my skill issue in CUDA.
-
-The name is a pun on kudaranai, which means useless in Japanese, and I think
-it's the fittest description of this repo.
+An **unoptimized** implementation of convolutional neural network made from
+scratch (well technically it does have dependencies but they're pre-installed)
+in CUDA/C++.
 
 Don't mind the crappy commit history, I just don't have CUDA-enabled hardware
 to test locally.
