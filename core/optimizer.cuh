@@ -25,7 +25,7 @@ protected:
 
 class SGD : public Optimizer {
 public:
-    SGD(float lr, float decay = 0.0, float momentum = 0.0)
+    SGD(float lr = 0.001, float decay = 0.0, float momentum = 0.0)
         : Optimizer(), lr(lr), decay(decay), momentum(momentum) {}
 
     void add_parameters(std::vector<Param> params) override;
@@ -41,7 +41,7 @@ private:
 
 class RMSProp : public Optimizer {
 public:
-    RMSProp(float lr, float decay = 0.0, float beta = 0.99)
+    RMSProp(float lr = 0.01, float decay = 0.0, float beta = 0.99)
         : Optimizer(), lr(lr), decay(decay), beta(beta) {}
 
     void add_parameters(std::vector<Param> params) override;
@@ -57,7 +57,8 @@ private:
 
 class Adam : public Optimizer {
 public:
-    Adam(float lr, float decay = 0.0, float beta1 = 0.9, float beta2 = 0.999)
+    Adam(float lr = 0.001, float decay = 0.0, float beta1 = 0.9,
+         float beta2 = 0.999)
         : Optimizer(), lr(lr), decay(decay), beta1(beta1), beta2(beta2) {}
 
     void add_parameters(std::vector<Param> params) override;
