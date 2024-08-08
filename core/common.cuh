@@ -16,7 +16,7 @@ namespace nnv2 {
 
 // Constants
 constexpr int BLOCK_SIZE = 256;
-constexpr int TILE_DIM = 32;
+constexpr int TILE_DIM = 16;
 
 constexpr float EPS = 1e-8;
 
