@@ -17,7 +17,8 @@
 
 namespace nnv2 {
 
-Mnist::Mnist(std::string data_path) : Dataset(data_path, 28, 28, 10) {
+Mnist::Mnist(std::string data_path, bool preprocess)
+    : Dataset(data_path, 28, 28, 10) {
     // read train data
     read_images(train_images, data_path + "/train-images-idx3-ubyte");
     read_labels(train_labels, data_path + "/train-labels-idx1-ubyte");
@@ -25,6 +26,11 @@ Mnist::Mnist(std::string data_path) : Dataset(data_path, 28, 28, 10) {
     // read test data
     read_images(test_images, data_path + "/t10k-images-idx3-ubyte");
     read_labels(test_labels, data_path + "/t10k-labels-idx1-ubyte");
+
+    if (preprocess) {
+        normalize(train_images);
+        normalize(test_images);
+    }
 }
 
 static unsigned reverse_int(unsigned i) {
@@ -75,28 +81,6 @@ void Mnist::read_images(std::vector<std::vector<float>> &output,
             }
             output.push_back(scaled_image);
         }
-
-        // calculate mean and standard deviation of all pixels in dataset
-        int n_pixels = n_images * h * w;
-        float mean = 0.0;
-        for (const std::vector<float> &im : output) {
-            mean += std::accumulate(im.begin(), im.end(), 0.0);
-        }
-        mean /= n_pixels;
-
-        float stddev = 0.0;
-        for (const std::vector<float> &im : output) {
-            stddev += std::accumulate(
-                im.begin(), im.end(), 0.0,
-                [&](float s, float x) { return s + (x - mean) * (x - mean); });
-        }
-        stddev = sqrtf(stddev / n_pixels);
-
-        // normalize images
-        for (std::vector<float> &im : output) {
-            std::transform(im.begin(), im.end(), im.begin(),
-                           [&](float x) { return (x - mean) / stddev; });
-        }
     } else {
         std::cerr << filename << " not found" << std::endl;
         exit(1);
@@ -127,6 +111,30 @@ void Mnist::read_labels(std::vector<unsigned char> &output,
     } else {
         std::cerr << filename << " not found" << std::endl;
         exit(1);
+    }
+}
+
+void Mnist::normalize(std::vector<std::vector<float>> &images) {
+    // calculate mean and standard deviation of all pixels in dataset
+    int n_pixels = images.size() * h * w;
+    float mean = 0.0;
+    for (const std::vector<float> &im : images) {
+        mean += std::accumulate(im.begin(), im.end(), 0.0);
+    }
+    mean /= n_pixels;
+
+    float stddev = 0.0;
+    for (const std::vector<float> &im : images) {
+        stddev += std::accumulate(
+            im.begin(), im.end(), 0.0,
+            [&](float s, float x) { return s + (x - mean) * (x - mean); });
+    }
+    stddev = sqrtf(stddev / n_pixels);
+
+    // normalize images
+    for (std::vector<float> &im : images) {
+        std::transform(im.begin(), im.end(), im.begin(),
+                       [&](float x) { return (x - mean) / stddev; });
     }
 }
 
