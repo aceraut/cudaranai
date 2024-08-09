@@ -22,16 +22,16 @@ __global__ void maxpool_forward_kernel(int size, float *output,
                                        int stride_w, int out_h, int out_w,
                                        int in_stride, int out_stride) {
     // each thread handles a pixel in the output image
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
+         idx += blockIdx.x * blockDim.x) {
+        int out_x = (idx / out_w) % out_h;
+        int out_y = idx % out_w;
+        int feat_idx = idx / out_w / out_h;
 
-    if (idx < size) {
-        int feat_idx = blockIdx.y;
         input += feat_idx * in_stride;
         output += feat_idx * out_stride;
         max_indices += feat_idx * out_stride;
 
-        int out_x = (idx / out_w) % out_h;
-        int out_y = idx % out_w;
         int in_x_start = out_x * stride_h - pad_h;
         int in_y_start = out_y * stride_w - pad_w;
         int in_x_end = fminf(in_x_start + filter_h, in_h);
@@ -79,17 +79,19 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     int in_stride = in_h * in_w;
     int out_h = output->get_shape()[2];
     int out_w = output->get_shape()[3];
-    int size = out_h * out_w; // is also out_stride
+    int out_stride = out_h * out_w;
 
     float *output_raw = RAW_PTR(output->get_vec());
     float *indices_raw = RAW_PTR(indices->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
 
-    dim3 grid_dim(ceil((float)size / BLOCK_SIZE), batch_size * in_feats, 1);
+    int size = batch_size * in_feats * out_h * out_w;
+    int grid_size = ceil((float)size / BLOCK_SIZE);
 
-    maxpool_forward_kernel<<<grid_dim, BLOCK_SIZE>>>(
+    maxpool_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, output_raw, indices_raw, input_raw, in_h, in_w, pad_h, pad_w,
-        filter_h, filter_w, stride_h, stride_w, out_h, out_w, in_stride, size);
+        filter_h, filter_w, stride_h, stride_w, out_h, out_w, in_stride,
+        out_stride);
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -100,18 +102,17 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
                         int stride_w, int out_h, int out_w, int in_stride,
                         int out_stride) {
     // each thread handles a pixel in the input image
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
+         idx += blockIdx.x * blockDim.x) {
+        // coord in input image
+        int in_x = (idx / in_w) % in_h + pad_h;
+        int in_y = idx % in_w + pad_w;
+        int feat_idx = idx / out_w / out_h;
 
-    if (idx < size) {
-        // point to input and output images that this thread handles
-        int feat_idx = blockIdx.y;
         input_grad += feat_idx * in_stride;
         output_grad += feat_idx * out_stride;
         max_indices += feat_idx * out_stride;
 
-        // coord in input image
-        int in_x = (idx / in_w) % in_h + pad_h;
-        int in_y = idx % in_w + pad_w;
         // locate the base coords of the section in the output image that
         // depends on pixel (in_x, in_y) of the input image
         int out_x_start =
@@ -157,7 +158,7 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
 
     int in_h = input_grad->get_shape()[2];
     int in_w = input_grad->get_shape()[3];
-    int size = in_h * in_w; // is also in_stride
+    int in_stride = in_h * in_w; // is also in_stride
 
     int out_h = output_grad->get_shape()[2];
     int out_w = output_grad->get_shape()[3];
@@ -167,11 +168,12 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
     const float *output_grad_raw = RAW_PTR(output_grad->get_vec());
     const float *indices_raw = RAW_PTR(indices->get_vec());
 
-    dim3 grid_dim(ceil((float)size / BLOCK_SIZE), batch_size * in_feats, 1);
+    int size = batch_size * in_feats * in_h * in_w;
+    int grid_size = ceil((float)size / BLOCK_SIZE);
 
-    maxpool_backward_kernel<<<grid_dim, BLOCK_SIZE>>>(
+    maxpool_backward_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, input_grad_raw, output_grad_raw, indices_raw, in_h, in_w, pad_h,
-        pad_w, filter_h, filter_w, stride_h, stride_w, out_h, out_w, size,
+        pad_w, filter_h, filter_w, stride_h, stride_w, out_h, out_w, in_stride,
         out_stride);
     CUDA_POST_KERNEL_CHECK;
 }
