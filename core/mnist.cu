@@ -17,7 +17,7 @@
 
 namespace nnv2 {
 
-Mnist::Mnist(std::string data_path, bool preprocess)
+Mnist::Mnist(std::string data_path, bool prep)
     : Dataset(data_path, 28, 28, 10) {
     // read train data
     read_images(train_images, data_path + "/train-images-idx3-ubyte");
@@ -28,8 +28,8 @@ Mnist::Mnist(std::string data_path, bool preprocess)
     read_labels(test_labels, data_path + "/t10k-labels-idx1-ubyte");
 
     if (preprocess) {
-        normalize(train_images);
-        normalize(test_images);
+        preprocess_images(train_images);
+        preprocess_images(test_images);
     }
 }
 
@@ -114,7 +114,7 @@ void Mnist::read_labels(std::vector<unsigned char> &output,
     }
 }
 
-void Mnist::normalize(std::vector<std::vector<float>> &images) {
+void Mnist::preprocess_images(std::vector<std::vector<float>> &images) {
     // calculate mean and standard deviation of all pixels in dataset
     int n_pixels = images.size() * h * w;
     float mean = 0.0;
@@ -125,9 +125,10 @@ void Mnist::normalize(std::vector<std::vector<float>> &images) {
 
     float stddev = 0.0;
     for (const std::vector<float> &im : images) {
-        stddev += std::accumulate(
-            im.begin(), im.end(), 0.0,
-            [&](float s, float x) { return s + (x - mean) * (x - mean); });
+        stddev +=
+            std::accumulate(im.begin(), im.end(), 0.0, [&](float s, float x) {
+                return s + (x - mean) * (x - mean);
+            });
     }
     stddev = sqrtf(stddev / n_pixels);
 

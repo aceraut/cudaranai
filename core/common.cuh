@@ -73,7 +73,7 @@ public:
     thrust::device_vector<float> &get_vec() { return vec; }
     const thrust::device_vector<float> &get_vec() const { return vec; }
 
-    const std::vector<int> &get_shape() const { return shape; } 
+    const std::vector<int> &get_shape() const { return shape; }
 
 private:
     void check_shape();

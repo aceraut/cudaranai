@@ -27,9 +27,9 @@ Table below documents the result of training different classifiers on
 30 epochs. Refer to this [notebook](https://colab.research.google.com/drive/1PTEictwtufbPmYrmPti-UT2d56daOq6B?usp=sharing)
 for full demonstration of the training process.
 
-| Classifier | Parameters | Optimizer | Run time | Max. test accuracy |
-| --- | --- | --- | --- | --- |
-| 2 Conv + 3 FC | ~62k | SGD | 6 min | 0.9049 |
-| 2 Conv + 3 FC | ~62k | RMSProp | 6 min | 0.902 |
-| 2 Conv + 1 FC | ~11k | Adam | 5 min | 0.9088 |
-| 3 Conv + 2 FC | ~193k | RMSProp | 6 min | 0.8961 |
+| Classifier | Parameters | Preprocessing | Optimizer | Run time | Max. test accuracy |
+| --- | --- | --- | --- | --- | --- |
+| 2 Conv + 1 FC | ~11k | Scaling + Standardization (subtract the mean + divide by stddev) | Adam | 100 sec | 0.9063 |
+| 2 Conv + 3 FC | ~62k | Scaling + Standardization | SGD | 120 sec | 0.9079 |
+| 2 Conv + 3 FC | ~62k | Scaling + Standardization | RMSProp | 90 sec | 0.9015 |
+| 3 Conv + 2 FC | ~193k | None | RMSProp | 180 sec | 0.9038 |
