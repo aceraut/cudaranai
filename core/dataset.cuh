@@ -51,9 +51,9 @@ public:
     }
 
 protected:
-    virtual void read_images(std::vector<std::vector<float>> &data,
+    virtual void read_images(std::vector<std::vector<float>> &output,
                              std::string filename) = 0;
-    virtual void read_labels(std::vector<unsigned char> &data,
+    virtual void read_labels(std::vector<unsigned char> &output,
                              std::string filename) = 0;
 
     std::string data_path;
