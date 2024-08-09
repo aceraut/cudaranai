@@ -125,33 +125,33 @@ __global__ void func_matmul_kernel(float *output, const float *input1,
     }
     output += batch_idx * m * n;
 
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
+    int bx = blockIdx.y;
+    int by = blockIdx.x;
+    int tx = threadIdx.y;
+    int ty = threadIdx.x;
 
-    int row = by * TILE_DIM + ty;
-    int col = bx * TILE_DIM + tx;
+    int row = bx * TILE_DIM + tx;
+    int col = by * TILE_DIM + ty;
 
     // loop over input tiles to calculate the dot value
     float value = 0;
 
     for (int i = 0; i < (int)ceil((float)k / TILE_DIM); i++) {
         // load input tiles to shared memory
-        if (row < m && i * TILE_DIM + tx < k) {
-            input1_tile[ty][tx] = input1[row * k + i * TILE_DIM + tx];
+        if (row < m && i * TILE_DIM + ty < k) {
+            input1_tile[tx][ty] = input1[row * k + i * TILE_DIM + ty];
         } else {
-            input1_tile[ty][tx] = 0;
+            input1_tile[tx][ty] = 0;
         }
-        if (col < n && i * TILE_DIM + ty < k) {
-            input2_tile[ty][tx] = input2[(i * TILE_DIM + ty) * n + col];
+        if (col < n && i * TILE_DIM + tx < k) {
+            input2_tile[tx][ty] = input2[(i * TILE_DIM + tx) * n + col];
         } else {
-            input2_tile[ty][tx] = 0;
+            input2_tile[tx][ty] = 0;
         }
         __syncthreads();
 
         for (int j = 0; j < TILE_DIM; j++) {
-            value += input1_tile[ty][j] * input2_tile[j][tx];
+            value += input1_tile[tx][j] * input2_tile[j][ty];
         }
         __syncthreads();
     }
