@@ -57,8 +57,6 @@ void Network::train(int epochs, bool shuffle) {
 void Network::train_epoch() {
     float loss_sum = 0.0;
     int batch_count = 0;
-    int accurate_count = 0;
-    int sample_count = 0;
 
     while (loader->has_next_train_batch()) {
         batch_count++;
@@ -69,12 +67,8 @@ void Network::train_epoch() {
             layers[i]->forward();
         }
 
-        // calculate loss & accuracy of prediction compared to actual result
+        // calculate loss value of prediction compared to actual result
         loss_sum += loss->calculate_loss(loader->get_labels());
-        std::pair<int, int> accuracy =
-            top1_accuracy(layers.back()->get_output(), loader->get_labels());
-        accurate_count += accuracy.first;
-        sample_count += accuracy.second;
 
         // backpropagate the loss gradient to the layers
         loss->backward();
@@ -85,9 +79,7 @@ void Network::train_epoch() {
         optimizer->update_parameters();
     }
 
-    std::cout << "Avg loss: " << loss_sum / batch_count << ", ";
-    std::cout << "Avg accuracy: " << 1.0 * accurate_count / sample_count
-              << "; ";
+    std::cout << "Avg loss (train): " << loss_sum / batch_count << "; ";
 }
 
 void Network::test() {
@@ -121,6 +113,7 @@ void Network::test() {
 
 // Calculate the accuracy where the label with the highest probability
 // is the correct label
+// TODO: somehow speed this thing up
 std::pair<int, int> Network::top1_accuracy(const Array *preds, const Array *y) {
     int batch_size = preds->get_shape()[0];
     int labels = preds->get_shape()[1];
