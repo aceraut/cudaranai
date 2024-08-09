@@ -8,11 +8,12 @@
 #include "network.cuh"
 
 #include <algorithm>
+#include <cfloat>
 #include <iomanip>
 #include <iostream>
 #include <utility>
 
-#include <thrust/extrema.h>
+#include <thrust/reduce.h>
 
 namespace nnv2 {
 
@@ -113,28 +114,55 @@ void Network::test() {
 
 // Calculate the accuracy where the label with the highest probability
 // is the correct label
-// TODO: somehow speed this thing up
+
+// TODO: optimize max reduce op in the kernel (and other similar reduce ops)
+__global__ void top1_accuracy_kernel(int size, int *is_accurate,
+                                     const float *preds, const float *y,
+                                     int label_stride) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        preds += idx * label_stride;
+        y += idx * label_stride;
+
+        float max_val = -FLT_MAX;
+        int pred_label = -1;
+        int y_label = -1;
+
+        for (int i = 0; i < label_stride; i++) {
+            if (max_val < preds[i]) {
+                max_val = preds[i];
+                pred_label = i;
+            }
+        }
+
+        for (int i = 0; i < label_stride; i++) {
+            if (y[i] == 1) {
+                y_label = i;
+                break;
+            }
+        }
+
+        is_accurate[idx] = (pred_label == y_label ? 1 : 0);
+    }
+}
+
 std::pair<int, int> Network::top1_accuracy(const Array *preds, const Array *y) {
     int batch_size = preds->get_shape()[0];
-    int labels = preds->get_shape()[1];
-    int count = 0;
+    int label_stride = preds->get_shape()[1];
 
-    for (int k = 0; k < batch_size; k++) {
-        // find label with highest distribution in prediction batch
-        auto pred_start = preds->get_vec().begin() + k * labels;
-        auto pred_top1 = thrust::max_element(pred_start, pred_start + labels);
-        int pred_top1_idx = (int)(pred_top1 - pred_start);
+    is_accurate.resize(batch_size);
 
-        // do the same with actual result batch
-        auto result_start = y->get_vec().begin() + k * labels;
-        auto result_top1 =
-            thrust::max_element(result_start, result_start + labels);
-        int result_top1_idx = (int)(result_top1 - result_start);
+    int *is_accurate_raw = RAW_PTR(is_accurate);
+    const float *preds_raw = RAW_PTR(preds->get_vec());
+    const float *y_raw = RAW_PTR(y->get_vec());
 
-        if (pred_top1_idx == result_top1_idx) {
-            count++;
-        }
-    }
+    int grid_size = ceil((float)batch_size / BLOCK_SIZE);
+
+    top1_accuracy_kernel<<<grid_size, BLOCK_SIZE>>>(
+        batch_size, is_accurate_raw, preds_raw, y_raw, label_stride);
+    CUDA_POST_KERNEL_CHECK;
+
+    int count = thrust::reduce(is_accurate.begin(), is_accurate.end());
     return std::make_pair(count, batch_size);
 }
 

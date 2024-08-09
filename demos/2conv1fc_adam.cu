@@ -33,7 +33,7 @@ int main(int argc, char **argv) {
     std::cout << "Network setup complete" << std::endl;
 
     std::unique_ptr<DataLoader> loader =
-        std::make_unique<DataLoader>(new Mnist(data_path, true), 1000);
+        std::make_unique<DataLoader>(new Mnist(data_path), 1000);
     std::unique_ptr<Loss> loss = std::make_unique<NLLLoss>();
     std::unique_ptr<Optimizer> optim = std::make_unique<Adam>(0.002);
 

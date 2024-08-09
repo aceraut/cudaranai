@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include <thrust/device_vector.h>
+
 namespace nnv2 {
 
 class Network {
@@ -31,6 +33,8 @@ private:
     DataLoader *loader;
     Loss *loss;
     Optimizer *optimizer;
+
+    thrust::device_vector<int> is_accurate;
 };
 
 } // namespace nnv2

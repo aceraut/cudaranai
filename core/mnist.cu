@@ -17,7 +17,7 @@
 
 namespace nnv2 {
 
-Mnist::Mnist(std::string data_path, bool prep)
+Mnist::Mnist(std::string data_path, bool standard, bool rescaled)
     : Dataset(data_path, 28, 28, 10) {
     // read train data
     read_images(train_images, data_path + "/train-images-idx3-ubyte");
@@ -27,9 +27,13 @@ Mnist::Mnist(std::string data_path, bool prep)
     read_images(test_images, data_path + "/t10k-images-idx3-ubyte");
     read_labels(test_labels, data_path + "/t10k-labels-idx1-ubyte");
 
-    if (preprocess) {
-        preprocess_images(train_images);
-        preprocess_images(test_images);
+    if (rescaled) {
+        rescale_images(train_images);
+        rescale_images(test_images);
+    }
+    if (standard) {
+        standardize_images(train_images);
+        standardize_images(test_images);
     }
 }
 
@@ -77,7 +81,7 @@ void Mnist::read_images(std::vector<std::vector<float>> &output,
         for (int i = 0; i < n_images; i++) {
             file.read((char *)image.data(), sizeof(unsigned char) * h * w);
             for (int k = 0; k < h * w; k++) {
-                scaled_image[k] = image[k] / 255.0;
+                scaled_image[k] = image[k];
             }
             output.push_back(scaled_image);
         }
@@ -114,7 +118,14 @@ void Mnist::read_labels(std::vector<unsigned char> &output,
     }
 }
 
-void Mnist::preprocess_images(std::vector<std::vector<float>> &images) {
+void Mnist::rescale_images(std::vector<std::vector<float>> &images) {
+    for (std::vector<float> &im : images) {
+        std::transform(im.begin(), im.end(), im.begin(),
+                       [](float x) { return x / 255.0; });
+    }
+}
+
+void Mnist::standardize_images(std::vector<std::vector<float>> &images) {
     // calculate mean and standard deviation of all pixels in dataset
     int n_pixels = images.size() * h * w;
     float mean = 0.0;
