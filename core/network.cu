@@ -66,8 +66,6 @@ void Network::train(int epochs, bool shuffle) {
 void Network::train_epoch() {
     float loss_sum = 0.0;
     int batch_count = 0;
-    int accurate_count = 0;
-    int sample_count = 0;
 
 #ifdef STATS
     std::clock_t start;
@@ -106,10 +104,6 @@ void Network::train_epoch() {
         start = std::clock();
 #endif
         loss_sum += loss->calculate_loss(loader->get_labels());
-        std::pair<int, int> accuracy =
-            top1_accuracy(layers.back()->get_output(), loader->get_labels());
-        accurate_count += accuracy.first;
-        sample_count += accuracy.second;
 
         // backpropagate the loss gradient to the layers
         loss->backward();
@@ -136,9 +130,7 @@ void Network::train_epoch() {
 #endif
     }
 
-    std::cout << "Avg loss: " << loss_sum / batch_count << ", ";
-    std::cout << "Avg accuracy: " << 1.0 * accurate_count / sample_count
-              << "; ";
+    std::cout << "Avg loss: " << loss_sum / batch_count << "; ";
 
 #ifdef STATS
     std::cout << std::endl;
@@ -153,7 +145,6 @@ void Network::train_epoch() {
                   << std::endl;
     std::cout << "Optimize: " << optim_time << std::endl;
     std::cout << "-------------------------------------------" << std::endl;
-
 #endif
 }
 
