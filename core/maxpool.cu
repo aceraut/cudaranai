@@ -107,7 +107,7 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
         // coord in input image
         int in_x = (idx / in_w) % in_h + pad_h;
         int in_y = idx % in_w + pad_w;
-        int feat_idx = idx / out_w / out_h;
+        int feat_idx = idx / in_w / in_h;
 
         input_grad += feat_idx * in_stride;
         output_grad += feat_idx * out_stride;
