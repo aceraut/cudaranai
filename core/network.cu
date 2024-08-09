@@ -12,10 +12,6 @@
 #include <iostream>
 #include <utility>
 
-#ifdef STATS
-#include <ctime>
-#endif
-
 #include <thrust/extrema.h>
 
 namespace nnv2 {
@@ -47,11 +43,6 @@ void Network::init(DataLoader *loader_, Loss *loss_, Optimizer *optimizer_) {
     for (int i = 0; i < layers.size(); i++) {
         optimizer->add_parameters(layers[i]->get_parameters());
     }
-
-#ifdef STATS
-    forward_time.resize(layers.size());
-    backward_time.resize(layers.size());
-#endif
 }
 
 void Network::train(int epochs, bool shuffle) {
@@ -69,42 +60,16 @@ void Network::train_epoch() {
     int accurate_count = 0;
     int sample_count = 0;
 
-#ifdef STATS
-    std::clock_t start;
-
-    load_time = 0;
-    verify_time = 0;
-    optim_time = 0;
-    std::fill(forward_time.begin(), forward_time.end(), 0);
-    std::fill(backward_time.begin(), backward_time.end(), 0);
-#endif
-
     while (loader->has_next_train_batch()) {
         batch_count++;
-
-#ifdef STATS
-        start = std::clock();
-#endif
         loader->load_train_batch();
-#ifdef STATS
-        load_time += (std::clock() - start) / (float)CLOCKS_PER_SEC;
-#endif
 
         // perform forward propagation to calculate prediction
         for (int i = 0; i < layers.size(); i++) {
-#ifdef STATS
-            start = std::clock();
-#endif
             layers[i]->forward();
-#ifdef STATS
-            forward_time[i] += (std::clock() - start) / (float)CLOCKS_PER_SEC;
-#endif
         }
 
         // calculate loss & accuracy of prediction compared to actual result
-#ifdef STATS
-        start = std::clock();
-#endif
         loss_sum += loss->calculate_loss(loader->get_labels());
         std::pair<int, int> accuracy =
             top1_accuracy(layers.back()->get_output(), loader->get_labels());
@@ -113,48 +78,16 @@ void Network::train_epoch() {
 
         // backpropagate the loss gradient to the layers
         loss->backward();
-#ifdef STATS
-        verify_time += (std::clock() - start) / (float)CLOCKS_PER_SEC;
-#endif
-
         for (int i = layers.size() - 1; i >= 0; i--) {
-#ifdef STATS
-            start = std::clock();
-#endif
             layers[i]->backward();
-#ifdef STATS
-            backward_time[i] += (std::clock() - start) / (float)CLOCKS_PER_SEC;
-#endif
         }
         // update the parameters with regard to the gradient
-#ifdef STATS
-        start = std::clock();
-#endif
         optimizer->update_parameters();
-#ifdef STATS
-        optim_time += (std::clock() - start) / (float)CLOCKS_PER_SEC;
-#endif
     }
 
     std::cout << "Avg loss: " << loss_sum / batch_count << ", ";
     std::cout << "Avg accuracy: " << 1.0 * accurate_count / sample_count
               << "; ";
-
-#ifdef STATS
-    std::cout << std::endl;
-    std::cout << "-------------------------------------------" << std::endl;
-    std::cout << "Load: " << load_time / batch_count << std::endl;
-    for (int i = 0; i < (int)forward_time.size(); i++)
-        std::cout << "Forward #" << i << ": " << forward_time[i] / batch_count
-                  << std::endl;
-    std::cout << "Verify: " << verify_time / batch_count << std::endl;
-    for (int i = 0; i < (int)backward_time.size(); i++)
-        std::cout << "Backward #" << i << ": " << backward_time[i] / batch_count
-                  << std::endl;
-    std::cout << "Optimize: " << optim_time << std::endl;
-    std::cout << "-------------------------------------------" << std::endl;
-
-#endif
 }
 
 void Network::test() {

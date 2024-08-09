@@ -31,14 +31,6 @@ private:
     DataLoader *loader;
     Loss *loss;
     Optimizer *optimizer;
-
-#ifdef STATS
-    float load_time;
-    float verify_time;
-    float optim_time;
-    std::vector<float> forward_time;
-    std::vector<float> backward_time;
-#endif
 };
 
 } // namespace nnv2

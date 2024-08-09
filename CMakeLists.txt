@@ -2,11 +2,6 @@ cmake_minimum_required(VERSION 3.10)
 project(nnv2 LANGUAGES CXX CUDA)
 
 option(BUILD_TESTS "build test program to test the functions" OFF)
-option(STATS "stats" OFF)
-
-if(STATS)
-    add_definitions(-DSTATS)
-endif()
 
 # Set the directories for the core, tests, and demos
 set(CORE_DIR ${CMAKE_SOURCE_DIR}/core)
