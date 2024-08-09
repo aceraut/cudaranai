@@ -23,7 +23,7 @@ __global__ void maxpool_forward_kernel(int size, float *output,
                                        int in_stride, int out_stride) {
     // each thread handles a pixel in the output image
     for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
-         idx += blockIdx.x * blockDim.x) {
+         idx += gridDim.x * blockDim.x) {
         int out_x = (idx / out_w) % out_h;
         int out_y = idx % out_w;
         int feat_idx = idx / out_w / out_h;
@@ -103,7 +103,7 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
                         int out_stride) {
     // each thread handles a pixel in the input image
     for (int idx = blockIdx.x * blockDim.x + threadIdx.x; idx < size;
-         idx += blockIdx.x * blockDim.x) {
+         idx += gridDim.x * blockDim.x) {
         // coord in input image
         int in_x = (idx / in_w) % in_h + pad_h;
         int in_y = idx % in_w + pad_w;
