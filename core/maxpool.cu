@@ -29,8 +29,6 @@ __global__ void maxpool_forward_kernel(int size, float *output,
         int feat_idx = idx / out_w / out_h;
 
         input += feat_idx * in_stride;
-        output += feat_idx * out_stride;
-        max_indices += feat_idx * out_stride;
 
         int in_x_start = out_x * stride_h - pad_h;
         int in_y_start = out_y * stride_w - pad_w;
@@ -109,7 +107,6 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
         int in_y = idx % in_w + pad_w;
         int feat_idx = idx / in_w / in_h;
 
-        input_grad += feat_idx * in_stride;
         output_grad += feat_idx * out_stride;
         max_indices += feat_idx * out_stride;
 
