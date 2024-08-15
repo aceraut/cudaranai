@@ -31,8 +31,8 @@ void test_relu_backward() {
 }
 
 void test_softmax_forward() {
-    Array input({1, 1, 4, 3}, {1, 2, 3, 1, 2, -1, 0, 0, 0, -1, 2, 0});
-    Array output({1, 1, 4, 3});
+    Array input({4, 3}, {1, 2, 3, 1, 2, -1, 0, 0, 0, -1, 2, 0});
+    Array output({4, 3});
 
     softmax_forward(&output, &input);
     print_vec(output.get_vec());
