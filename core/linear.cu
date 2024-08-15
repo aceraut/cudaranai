@@ -1,8 +1,3 @@
-// This file implements the Linear or fully connected layer
-//
-// In this layer, each neuron applies linear transformation to all data points
-// in the input vector using its filter. The output is then added with bias.
-
 #include "common.cuh"
 #include "linear.cuh"
 
@@ -12,6 +7,13 @@
 #include <cuda_runtime.h>
 
 namespace nnv2 {
+
+// The forward phase of the linear layer involves computing the output as a
+// weighted sum of the input features plus a bias term. Given an input X with
+// dimensions [batch_size, F_i], the layer computes the output Y as:
+//     Y = X * W + b
+// where W is the weight matrix with dimensions [F_i, F_o], and b is the bias
+// vector with dimensions [1, F_o].
 
 void linear_forward(Array *output, const Array *input, const Array *filter) {
     CHECK_EQ(input->get_shape()[1], filter->get_shape()[0],
@@ -54,6 +56,19 @@ void linear_forward_bias(Array *output, const Array *bias) {
     CUDA_POST_KERNEL_CHECK;
 }
 
+// The backward phase of the linear layer involves calculating the loss
+// gradients with respect to the input, weight matrix, and bias. Given the
+// forward phase equation Y = X * W^T + b, the gradients for the backward phase
+// are computed as:
+//
+// - Loss gradient w.r.t weight matrix: dL/dW = X^T * dL/dY
+// - Loss gradient w.r.t input: dL/dX = dL/dY * W^T
+// - Loss gradient w.r.t bias: dL/db = sum(dL/dY) along the batch dimension
+//
+// Here, dL/dY is the gradient of the loss with respect to the output Y, and
+// the matrix multiplications and summations are performed according to the
+// respective dimensions to compute the gradients.
+
 void linear_backward(Array *input_grad, Array *filter_grad, const Array *input,
                      const Array *filter, const Array *output_grad,
                      ArrayMap &cache) {
@@ -72,9 +87,7 @@ void linear_backward(Array *input_grad, Array *filter_grad, const Array *input,
                     {filter->get_shape()[1], filter->get_shape()[0]});
     func_transpose(cache["filter_t"].get(), filter);
 
-    // dW = X^T * dA
     func_matmul(filter_grad, cache["input_t"].get(), output_grad);
-    // dX = dA * W^T
     func_matmul(input_grad, output_grad, cache["filter_t"].get());
 }
 
@@ -85,7 +98,6 @@ void linear_backward_bias(Array *bias_grad, const Array *output_grad) {
              "linear_backward_bias: mismatch between bias size and number of "
              "output features");
 
-    // calculate gradient with respect to bias: db = sum(dA, axis=0)
     func_sum(bias_grad, output_grad, 0, false);
 }
 
@@ -96,7 +108,7 @@ Linear::Linear(int in_feats, int out_feats, const Initializer *init)
     filter_grad.reset(new Array({in_feats, out_feats}));
     bias_grad.reset(new Array({1, out_feats}));
 
-    // initialize parameters
+    // Initialize parameters
     init->initialize(filter.get(), in_feats, out_feats);
     init->initialize(bias.get(), in_feats, out_feats);
 }
@@ -110,7 +122,6 @@ void Linear::forward() {
     const Array *input = prev->get_output();
     int batch_size = input->get_shape()[0];
 
-    // initialize storage for output
     set_array_ptr(output, {batch_size, out_feats});
 
     linear_forward(output.get(), input, filter.get());

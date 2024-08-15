@@ -1,8 +1,3 @@
-// This file implements the Flatten layer, a drop-in layer that directly
-// converts previous layer's output to flattened representation (except the
-// first dimension to preserve batch processing), and next layer's input
-// gradient to the original shape.
-
 #include "flatten.cuh"
 
 #include <functional>

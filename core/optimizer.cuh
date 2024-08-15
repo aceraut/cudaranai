@@ -11,11 +11,11 @@ class Optimizer {
 public:
     Optimizer() {}
 
-    // register parameters to the optimizer, you should pass the call
+    // Register parameters to the optimizer, you should pass the call
     // to Layer::get_parameters() in the parameter lists
     virtual void add_parameters(std::vector<Param> params) = 0;
 
-    // update registered parameters
+    // Update registered parameters
     virtual void update_parameters() = 0;
 
 protected:

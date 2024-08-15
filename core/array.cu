@@ -70,12 +70,10 @@ void Array::resize(const std::vector<int> &_shape) {
 void Array::check_shape() {
     int size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    CHECK_EQ(size, vec.size(), "array: mismatch between shape with size");
+    CHECK_EQ(size, vec.size(), "mismatch between array shape with size");
 }
 
-//
-// Functions that help initialize Array objects from smart pointers or ArrayMap
-//
+// Helper function for initializing Array object inside smart pointer
 void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape) {
     if (ptr.get() == nullptr) {
         ptr.reset(new Array(shape));
@@ -87,6 +85,7 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape) {
     }
 }
 
+// Helper function for initializing Array object from an ArrayMap cache
 void set_array_cache(ArrayMap &map, std::string key,
                      const std::vector<int> &shape) {
     if (map.find(key) == map.end()) {

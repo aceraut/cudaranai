@@ -1,9 +1,3 @@
-// This implements the MaxPool2D layer, a variant of pooling layer.
-//
-// This layer is typically used after the convolution layer and is used to
-// reduce the spatial dimensions of the input data, by taking pixels with the
-// maximum value in smaller grids of the input image to the output image.
-
 #include "common.cuh"
 #include "maxpool.cuh"
 
@@ -15,23 +9,32 @@
 
 namespace nnv2 {
 
+// The forward phase of max-pooling layer involves selecting the pixel with the
+// largest value in every smaller local patches of the input feature maps and
+// place them in the output feature maps.
+
 __global__ void maxpool_forward_kernel(int size, float *output,
                                        float *max_indices, const float *input,
                                        int in_h, int in_w, int pad_h, int pad_w,
                                        int filter_h, int filter_w, int stride_h,
                                        int stride_w, int out_h, int out_w,
                                        int in_stride, int out_stride) {
-    // each thread handles a pixel in the output image
+    // Each thread handles a pixel in the output image
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < size) {
+        // Point to input and output images that this thread handles
         int feat_idx = blockIdx.y;
         input += feat_idx * in_stride;
         output += feat_idx * out_stride;
         max_indices += feat_idx * out_stride;
 
+        // Coord in output image
         int out_x = (idx / out_w) % out_h;
         int out_y = idx % out_w;
+
+        // Locate the base coords of the section in the input image that
+        // affects (out_x, out_y) of the output image
         int in_x_start = out_x * stride_h - pad_h;
         int in_y_start = out_y * stride_w - pad_w;
         int in_x_end = fminf(in_x_start + filter_h, in_h);
@@ -93,26 +96,34 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     CUDA_POST_KERNEL_CHECK;
 }
 
+// The backward phase of the max-pooling layer involves assigning the value of
+// each pixel in the output gradient to the corresponding pixels in the input
+// feature maps that were selected as maxima during the forward phase. If a
+// pixel in the input feature map contributes to multiple output pixels, its
+// gradient value is the sum of the gradients from all the output pixels where
+// it was chosen.
+
 __global__ void
 maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
                         const float *max_indices, int in_h, int in_w, int pad_h,
                         int pad_w, int filter_h, int filter_w, int stride_h,
                         int stride_w, int out_h, int out_w, int in_stride,
                         int out_stride) {
-    // each thread handles a pixel in the input image
+    // Each thread handles a pixel in the input image
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < size) {
-        // point to input and output images that this thread handles
+        // Point to input and output images that this thread handles
         int feat_idx = blockIdx.y;
         input_grad += feat_idx * in_stride;
         output_grad += feat_idx * out_stride;
         max_indices += feat_idx * out_stride;
 
-        // coord in input image
+        // Coord in input image
         int in_x = (idx / in_w) % in_h + pad_h;
         int in_y = idx % in_w + pad_w;
-        // locate the base coords of the section in the output image that
+
+        // Locate the base coords of the section in the output image that
         // depends on pixel (in_x, in_y) of the input image
         int out_x_start =
             (in_x < filter_h) ? 0 : (in_x - filter_h) / stride_h + 1;
@@ -123,7 +134,7 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
 
         float value = 0;
         in_x -= pad_h;
-        in_y -= pad_w; // since max_indices are unpadded
+        in_y -= pad_w; // Since max_indices are unpadded
 
         for (int out_x = out_x_start; out_x < out_x_end; out_x++) {
             for (int out_y = out_y_start; out_y < out_y_end; out_y++) {

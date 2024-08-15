@@ -17,6 +17,7 @@ protected:
     const Array *y;
 };
 
+// Only pair this with Softmax layer
 class CrossEntropyLoss : public Loss {
 public:
     CrossEntropyLoss() : Loss() {}
@@ -29,6 +30,7 @@ void cross_entropy_loss(Array *output, const Array *input, const Array *y,
 void cross_entropy_loss_backward(Array *input_grad, const Array *input,
                                  const Array *y);
 
+// Only pair this with LogSoftmax layer
 class NLLLoss : public Loss {
 public:
     NLLLoss() : Loss() {}

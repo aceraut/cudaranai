@@ -17,7 +17,6 @@ namespace nnv2 {
 // Constants
 constexpr int BLOCK_SIZE = 256;
 constexpr int TILE_DIM = 16;
-
 constexpr float EPS = 1e-8;
 
 // Check macros
@@ -49,10 +48,8 @@ constexpr float EPS = 1e-8;
 
 #define RAW_PTR(vec) (thrust::raw_pointer_cast(vec.data()))
 
-//
 // array.cc
 // Array object similar to numpy array
-//
 class Array {
 public:
     explicit Array(const std::vector<int> &_shape);
@@ -82,11 +79,7 @@ private:
     std::vector<int> shape;
 };
 
-//
-// Functions that help initialize Array objects from smart pointers or ArrayMap
-//
-
-// Initialzing Array from smart pointer
+// Initializes Array object inside smart pointer
 void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 
 // As several functions in the training process require temporary Array objects,
@@ -98,11 +91,11 @@ using ArrayMap = std::unordered_map<std::string, std::unique_ptr<Array>>;
 void set_array_cache(ArrayMap &map, std::string key,
                      const std::vector<int> &shape);
 
-//
-// mathfunc.cc
-//
-// Math operations on Array objects
-//
+// A pair of weight array and gradient array, used by Optimizer to recalculate
+// the weight.
+using Param = std::pair<Array *, Array *>;
+
+// Math operations on Array objects. Defined in mathfunc.cc
 
 // Element-wise addition of 2 arrays
 void func_add(Array *output, const Array *input1, const Array *input2);
@@ -143,13 +136,5 @@ void func_sum(Array *output, const Array *input, int axis, bool reduce = true);
 // Mean value of array elements over an axis
 // `reduce` tells the function that the output must have that axis removed
 void func_mean(Array *output, const Array *input, int axis, bool reduce = true);
-
-//
-// optimizer.cc
-//
-// A pair of weight array and gradient array, used by Optimizer to recalculate
-// the weight.
-//
-using Param = std::pair<Array *, Array *>;
 
 } // namespace nnv2

@@ -1,10 +1,3 @@
-// This file contains the definition of the Dataset driver
-// This is a base class that contains function related to dataset import
-// and manipulation, which would then be incorporated to a DataLoader object
-// for further data distribution to the neural network.
-// You should be using derived class that implements import functions for
-// specific dataset.
-
 #pragma once
 
 #include <algorithm>
@@ -14,6 +7,12 @@
 #include <vector>
 
 namespace nnv2 {
+
+// This is a base class that contains function related to dataset import
+// and manipulation, which would then be incorporated to a DataLoader object
+// for further data distribution to the neural network.
+// You should be using derived class that implements import functions for
+// specific dataset.
 
 class Dataset {
 public:

@@ -30,7 +30,6 @@ private:
     ArrayMap cache;
 };
 
-// for testing purpose, local functions are defined here
 void linear_forward(Array *output, const Array *input, const Array *filter);
 void linear_forward_bias(Array *output, const Array *bias);
 

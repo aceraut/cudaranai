@@ -1,5 +1,3 @@
-// This file implements Loss classes: cross-entropy loss and NLL loss.
-//
 // Loss layer validates the prediction results with the actual results to
 // calculate the loss value and the loss gradient for backpropagation.
 
@@ -8,11 +6,10 @@
 
 namespace nnv2 {
 
-//
-// Cross-entropy
-//
-// Calculates cross-entropy loss value using the formula
-// loss = -1/n * sum(sum(y * log(p)))
+// Cross-entropy is a function to calculate loss value using the formula:
+// Loss(P) = - mean(sum(Y * log(P))),
+// where P is the output of the forward phase of the classifier with Softmax as
+// the final layer and Y is the actual result in one-hot encoding.
 void cross_entropy_loss(Array *output, const Array *input, const Array *y,
                         ArrayMap &cache) {
     CHECK_EQ(input->get_shape(), y->get_shape(),
@@ -24,11 +21,11 @@ void cross_entropy_loss(Array *output, const Array *input, const Array *y,
     set_array_cache(cache, "loss_sparse", input->get_shape());
     func_mul(cache["loss_sparse"].get(), cache["log_pred"].get(), y);
 
-    // reduce the distribution matrix to one-dimensional array
+    // Reduce the distribution matrix to one-dimensional array
     set_array_cache(cache, "loss", {input->get_shape()[0]});
     func_sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
 
-    // calculate average log loss value of a batch
+    // Calculate average log loss value of a batch
     func_mean(output, cache["loss"].get(), 0, false);
     output->get_vec()[0] *= -1.0;
 }
@@ -58,9 +55,11 @@ void CrossEntropyLoss::backward() {
     cross_entropy_loss_backward(grad.get(), input, y);
 }
 
-//
-// NLLLoss
-//
+// Negative log likelihood loss (NLLLoss) is a function to calculate loss value
+// using the formula:
+// Loss(P) = - mean(sum(Y * P)),
+// where P is the output of the forward phase of the classifier with LogSoftmax
+// as the final layer and Y is the actual labels in one-hot encoding.
 void nll_loss(Array *output, const Array *input, const Array *y,
               ArrayMap &cache) {
     CHECK_EQ(input->get_shape(), y->get_shape(),

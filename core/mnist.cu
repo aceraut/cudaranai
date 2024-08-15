@@ -19,11 +19,11 @@ namespace nnv2 {
 
 Mnist::Mnist(std::string data_path, bool standard, bool rescaled)
     : Dataset(data_path, 28, 28, 10) {
-    // read train data
+    // Read train data
     read_images(train_images, data_path + "/train-images-idx3-ubyte");
     read_labels(train_labels, data_path + "/train-labels-idx1-ubyte");
 
-    // read test data
+    // Read test data
     read_images(test_images, data_path + "/t10k-images-idx3-ubyte");
     read_labels(test_labels, data_path + "/t10k-labels-idx1-ubyte");
 
@@ -31,6 +31,7 @@ Mnist::Mnist(std::string data_path, bool standard, bool rescaled)
         rescale_images(train_images);
         rescale_images(test_images);
     }
+
     if (standard) {
         standardize_images(train_images);
         standardize_images(test_images);
@@ -56,7 +57,7 @@ void Mnist::read_images(std::vector<std::vector<float>> &output,
         unsigned n_rows = 0;
         unsigned n_cols = 0;
 
-        // read metadata
+        // Read metadata
         file.read((char *)&magic_number, sizeof(magic_number));
         file.read((char *)&n_images, sizeof(n_images));
         file.read((char *)&n_rows, sizeof(n_rows));
@@ -75,7 +76,7 @@ void Mnist::read_images(std::vector<std::vector<float>> &output,
         CHECK_EQ(h, n_rows, "Mnist::read_images: row length must be 28");
         CHECK_EQ(w, n_cols, "Mnist::read_images: column length must be 28");
 
-        // read images
+        // Read images
         std::vector<unsigned char> image(h * w);
         std::vector<float> scaled_image(h * w);
         for (int i = 0; i < n_images; i++) {
@@ -126,7 +127,7 @@ void Mnist::rescale_images(std::vector<std::vector<float>> &images) {
 }
 
 void Mnist::standardize_images(std::vector<std::vector<float>> &images) {
-    // calculate mean and standard deviation of all pixels in dataset
+    // Calculate mean and standard deviation of all pixels in dataset
     int n_pixels = images.size() * h * w;
     float mean = 0.0;
     for (const std::vector<float> &im : images) {
@@ -143,7 +144,7 @@ void Mnist::standardize_images(std::vector<std::vector<float>> &images) {
     }
     stddev = sqrtf(stddev / n_pixels);
 
-    // normalize images
+    // Normalize images
     for (std::vector<float> &im : images) {
         std::transform(im.begin(), im.end(), im.begin(),
                        [&](float x) { return (x - mean) / stddev; });

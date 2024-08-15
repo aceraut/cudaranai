@@ -1,5 +1,3 @@
-// This file implements math operations on Array objects.
-
 #include "common.cuh"
 
 #include <cmath>
@@ -115,7 +113,7 @@ __global__ void func_matmul_kernel(float *output, const float *input1,
     __shared__ float input1_tile[TILE_DIM][TILE_DIM];
     __shared__ float input2_tile[TILE_DIM][TILE_DIM];
 
-    // calculate offsets of the matrices
+    // Calculate offsets of the matrices
     int batch_idx = blockIdx.z;
     if (broadcast != 1) {
         input1 += batch_idx * m * k;
@@ -133,11 +131,11 @@ __global__ void func_matmul_kernel(float *output, const float *input1,
     int row = by * TILE_DIM + ty;
     int col = bx * TILE_DIM + tx;
 
-    // loop over input tiles to calculate the dot value
+    // Loop over input tiles to calculate the dot value
     float value = 0;
 
     for (int i = 0; i < (int)ceil((float)k / TILE_DIM); i++) {
-        // load input tiles to shared memory
+        // Load input tiles to shared memory
         if (row < m && i * TILE_DIM + tx < k) {
             input1_tile[ty][tx] = input1[row * k + i * TILE_DIM + tx];
         } else {
@@ -161,20 +159,19 @@ __global__ void func_matmul_kernel(float *output, const float *input1,
     }
 }
 
+// Performs matrix multiplication with two modes based on `broadcast` value:
+//
+// `broadcast == 0` (default):
+// - For 2D inputs: single matrix multiplication.
+// - For higher dimensions: batch matrix multiplication on corresponding
+// matrices.
+//
+// `broadcast == 1 or 2`:
+// - Batch matrix multiplication between a batch A and a single matrix B.
+// - If `broadcast == 1`, B is the first input; if `broadcast == 2`, B is the
+// second input.
 void func_matmul(Array *output, const Array *input1, const Array *input2,
                  int broadcast) {
-    // Performs matrix multiplication with two modes based on `broadcast` value:
-    //
-    // `broadcast == 0` (default):
-    // - For 2D inputs: single matrix multiplication.
-    // - For higher dimensions: batch matrix multiplication on corresponding
-    // matrices.
-    //
-    // `broadcast == 1 or 2`:
-    // - Batch matrix multiplication between a batch A and a single matrix B.
-    // - If `broadcast == 1`, B is the first input; if `broadcast == 2`, B is
-    // the second input.
-
     CHECK_COND(input1->get_shape().size() > 1,
                "func_matmul: shape error at first input");
     CHECK_COND(input2->get_shape().size() > 1,
@@ -182,7 +179,7 @@ void func_matmul(Array *output, const Array *input1, const Array *input2,
     CHECK_COND(output->get_shape().size() > 1,
                "func_matmul: shape error at output");
 
-    // additional dimension check for broadcast case
+    // Additional dimension check for broadcast case
     if (broadcast == 1) {
         CHECK_EQ(input1->get_shape().size(), 2,
                  "func_matmul: shape error at first input");
@@ -191,7 +188,7 @@ void func_matmul(Array *output, const Array *input1, const Array *input2,
                  "func_matmul: shape error at second input");
     }
 
-    // calculate batch size and validate
+    // Calculate batch size and validate
     int batch_size = std::accumulate(output->get_shape().begin(),
                                      output->get_shape().end() - 2, 1,
                                      std::multiplies<int>());
@@ -209,7 +206,7 @@ void func_matmul(Array *output, const Array *input1, const Array *input2,
         CHECK_EQ(batch_size, bs_input2, "func_matmul: batch size mismatch");
     }
 
-    // validate matrix dimension
+    // Validate matrix dimension
     int m = *(input1->get_shape().rbegin() + 1);
     int k = *(input1->get_shape().rbegin());
     int n = *(input2->get_shape().rbegin());
@@ -259,19 +256,17 @@ __global__ void func_transpose_kernel(float *output, const float *input, int m,
     }
 }
 
+// Performs matrix tranpose. If the input has more than 2 dimensions, batch
+// matrix transpose is performed, which requires output to have the same batch
+// size as the input array
 void func_transpose(Array *output, const Array *input) {
-    // Performs matrix tranpose
-    //
-    // If input have more than 2 dimensions, it performs batch matrix transpose
-    // which requires output to have the same batch size as the input array
-
-    // check if the dimensions are at least 2
+    // Check if the dimensions are at least 2
     CHECK_COND(input->get_shape().size() > 1,
                "func_transpose: shape error at input");
     CHECK_COND(output->get_shape().size() > 1,
                "func_transpose: shape error at output");
 
-    // calculate batch size and validate
+    // Calculate batch size and validate
     int batch_size = std::accumulate(output->get_shape().begin(),
                                      output->get_shape().end() - 2, 1,
                                      std::multiplies<int>());
@@ -280,7 +275,7 @@ void func_transpose(Array *output, const Array *input) {
                                    std::multiplies<int>());
     CHECK_EQ(batch_size, bs_input, "func_transpose: batch size mismatch");
 
-    // validate matrix dimension
+    // Validate matrix dimension
     int m = *(input->get_shape().rbegin() + 1);
     int n = *(input->get_shape().rbegin());
     int output_h = *(output->get_shape().rbegin() + 1);
@@ -291,7 +286,7 @@ void func_transpose(Array *output, const Array *input) {
     CHECK_EQ(n, output_h,
              "func_transpose: shape mismatch between input and output");
 
-    // launch kernels
+    // Launch kernels
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
 
@@ -318,19 +313,17 @@ __global__ void func_sum_kernel(int size, float *output, const float *input,
     }
 }
 
+// Calculates sum of array elements along a given axis. The parameter `reduce`
+// indicates whether the dimension at `axis` in input array is removed in the
+// output.
 void func_sum(Array *output, const Array *input, int axis, bool reduce) {
-    // Calculates sum of array elements along a given axis
-    //
-    // The parameter `reduce` indicates whether the dimension at `axis`
-    // in input array is removed in the output
-
     CHECK_COND(axis >= 0,
                "func_sum: support for negative axis isn't implemented");
     CHECK_COND(axis < input->get_shape().size(),
                "func_sum: axis is out of bound");
 
-    // validate output shape
-    // if `reduce` is true, remove the element at `axis` from output shape
+    // Validate output shape
+    // If `reduce` is true, remove the element at `axis` from output shape
     std::vector<int> output_shape = input->get_shape();
     if (reduce && output_shape.size() > 1) {
         output_shape.erase(output_shape.begin() + axis);
@@ -340,7 +333,7 @@ void func_sum(Array *output, const Array *input, int axis, bool reduce) {
     CHECK_EQ(output->get_shape(), output_shape,
              "func_sum: shape error at output");
 
-    // launch kernels
+    // Launch kernels
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
 
@@ -371,18 +364,16 @@ __global__ void func_mean_kernel(int size, float *output, const float *input,
     }
 }
 
+// Calculates mean value of array elements along a given axis. The parameter
+// `reduce` indicates whether the dimension at `axis` in input array is removed
+// in the output.
 void func_mean(Array *output, const Array *input, int axis, bool reduce) {
-    // Calculates mean value of array elements along a given axis
-    //
-    // The parameter `reduce` indicates whether the dimension at `axis`
-    // in input array is removed in the output
-
     CHECK_COND(axis >= 0,
                "func_mean: support for negative axis isn't implemented");
     CHECK_COND(axis < input->get_shape().size(),
                "func_mean: axis is out of bound");
 
-    // validate output shape
+    // Validate output shape
     // if `reduce` is true, remove the element at `axis` from output shape
     std::vector<int> output_shape = input->get_shape();
     if (reduce && output_shape.size() > 1) {
@@ -393,7 +384,7 @@ void func_mean(Array *output, const Array *input, int axis, bool reduce) {
     CHECK_EQ(output->get_shape(), output_shape,
              "func_mean: shape error at output");
 
-    // launch kernels
+    // Launch kernels
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
 

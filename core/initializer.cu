@@ -1,5 +1,5 @@
 // This file implements multiple Initializer classes, meant to initialize
-// neural network parameters.
+// parameters in a neural network.
 //
 // Further notes on these initalizers can be found here:
 // https://pytorch.org/docs/stable/nn.init.html
@@ -16,7 +16,7 @@
 
 namespace nnv2 {
 
-// kernel to initialize data with normal distribution
+// Kernel to initialize data with normal distribution
 __global__ void normal_init_kernel(int size, float *vec, float mean,
                                    float stddev, unsigned seed) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -40,7 +40,7 @@ static void normal_init(thrust::device_vector<float> &vec, float s) {
     CUDA_POST_KERNEL_CHECK;
 }
 
-// kernel to initialize data with uniform distribution
+// Kernel to initialize data with uniform distribution
 __global__ void uniform_init_kernel(int size, float *vec, float a, float b,
                                     unsigned seed) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;

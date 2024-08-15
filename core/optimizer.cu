@@ -8,9 +8,7 @@
 
 namespace nnv2 {
 
-//
 // Stochastic gradient descent (SGD) with momentum
-//
 void SGD::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
         CHECK_EQ(weight->get_shape(), grad->get_shape(),
@@ -83,9 +81,7 @@ void SGD::update_parameters() {
     }
 }
 
-//
 // Root-mean-squared propagation (RMSProp)
-//
 void RMSProp::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
         CHECK_EQ(weight->get_shape(), grad->get_shape(),
@@ -131,9 +127,7 @@ void RMSProp::update_parameters() {
     }
 }
 
-//
 // Adaptive moment estimation (Adam)
-//
 void Adam::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
         CHECK_EQ(weight->get_shape(), grad->get_shape(),
@@ -162,7 +156,7 @@ __global__ void adam_kernel(int size, float *weight, const float *grad,
     }
 }
 
-// poor Adam :(
+// Poor Adam :(
 static void adam_single(Array *weight, const Array *grad, Array *mean_grad,
                         Array *mean_sqr_grad, float lr, float decay,
                         float beta1, float beta2, float beta1_pow,
@@ -182,7 +176,7 @@ static void adam_single(Array *weight, const Array *grad, Array *mean_grad,
 }
 
 void Adam::update_parameters() {
-    // update beta^t and beta_sqr^t in each optimization iteration
+    // Update beta^t and beta_sqr^t in each optimization iteration
     beta1_pow *= beta1;
     beta2_pow *= beta2;
 

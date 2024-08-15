@@ -12,10 +12,6 @@
 
 namespace nnv2 {
 
-//
-// ReLU
-//
-
 void relu_forward(Array *output, const Array *input) {
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
              "relu_forward: size mismatch between input and output");
@@ -48,10 +44,6 @@ void ReLU::backward() {
     Array *output_grad = next->get_grad();
     relu_backward(output_grad, output_grad, input);
 }
-
-//
-// Sigmoid
-//
 
 void sigmoid_forward(Array *output, const Array *input) {
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
@@ -90,10 +82,6 @@ void Sigmoid::backward() {
     sigmoid_backward(output_grad, output_grad, input);
 }
 
-//
-// Tanh
-//
-
 void tanh_forward(Array *output, const Array *input) {
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
              "tanh_forward: size mismatch between input and output");
@@ -130,10 +118,11 @@ void Tanh::backward() {
     tanh_backward(output_grad, output_grad, input);
 }
 
-//
-// Softmax
-//
-
+// Applies softmax function to a batch of vectors so that elements in each
+// output vector lie in the range (0, 1) and sum to 1.
+// Softmax function is defined as: Softmax(X) = exp(X) / sum(exp(X)).
+// This implementation rescales the input vectors by subtracting the maxinum
+// value from every vector element to avoid overflow when calling exp().
 __global__ void softmax_forward_kernel(int size, float *output,
                                        const float *input, int stride) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -154,22 +143,28 @@ __global__ void softmax_forward_kernel(int size, float *output,
         }
 
         for (int i = 0; i < stride; i++) {
-            output[i] = output[i] / exp_sum + EPS; // prevent applying log on 0
+            // Add episilon to the output to prevent applying log on 0 when
+            // calculating loss.
+            output[i] = output[i] / exp_sum + EPS;
         }
     }
 }
 
 void softmax_forward(Array *output, const Array *input) {
+    CHECK_EQ(output->get_shape().size(), 2,
+             "softmax_forward: output is not 2 dimensional");
+    CHECK_EQ(input->get_shape().size(), 2,
+             "softmax_forward: input is not 2 dimensional");
     CHECK_EQ(output->get_vec().size(), input->get_vec().size(),
-             "softmax_forward: size mismatch between input and output");
+             "softmax_forward: shape mismatch between input and output");
 
     int batch_size = input->get_shape()[0];
     int batch_stride =
         std::accumulate(input->get_shape().begin() + 1,
                         input->get_shape().end(), 1, std::multiplies<int>());
 
-    const float *input_raw = RAW_PTR(input->get_vec());
     float *output_raw = RAW_PTR(output->get_vec());
+    const float *input_raw = RAW_PTR(input->get_vec());
 
     int grid_size = ceil((float)batch_size / BLOCK_SIZE);
 
@@ -187,14 +182,18 @@ void Softmax::forward() {
 void Softmax::backward() {
     const Array *output_grad = next->get_grad();
     set_array_ptr(grad, output_grad->get_shape());
+
+    // Backpropagation at Softmax layer involves only copying the output
+    // gradient to the input gradient.
     thrust::copy(output_grad->get_vec().begin(), output_grad->get_vec().end(),
                  grad->get_vec().begin());
 }
 
-//
-// LogSoftmax
-//
-
+// Applies LogSoftmax function to a batch of vectors. LogSoftmax is defined as:
+// LogSoftmax(X) = log(Softmax(X)) = log(exp(X) / sum(exp(X)))
+//               = X - log(sum(exp(X)))
+// This implementation rescales the input vectors by subtracting the maxinum
+// value from every vector element to avoid overflow when calling exp().
 __global__ void log_softmax_forward_kernel(int size, float *output,
                                            const float *input, int stride) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -221,8 +220,12 @@ __global__ void log_softmax_forward_kernel(int size, float *output,
 }
 
 void log_softmax_forward(Array *output, const Array *input) {
+    CHECK_EQ(output->get_shape().size(), 2,
+             "log_softmax_forward: output is not 2 dimensional");
+    CHECK_EQ(input->get_shape().size(), 2,
+             "log_softmax_forward: input is not 2 dimensional");
     CHECK_EQ(output->get_shape(), input->get_shape(),
-             "log_softmax_forward: size mismatch between input and output");
+             "log_softmax_forward: shape mismatch between input and output");
 
     int batch_size = input->get_shape()[0];
     int batch_stride =
@@ -239,6 +242,8 @@ void log_softmax_forward(Array *output, const Array *input) {
     CUDA_POST_KERNEL_CHECK;
 }
 
+// Calculates loss gradient w.r.t. input of LogSoftmax layer using the formula
+// dL/dX = dL/dY - sum(dL/dY) * Softmax(X)
 __global__ void log_softmax_backward_kernel(int size, float *input_grad,
                                             const float *output_grad,
                                             const float *input, int stride) {
@@ -274,6 +279,13 @@ __global__ void log_softmax_backward_kernel(int size, float *input_grad,
 
 void log_softmax_backward(Array *input_grad, const Array *output_grad,
                           const Array *input) {
+    CHECK_EQ(input_grad->get_shape().size(), 2,
+             "log_softmax_backward: input_grad is not 2 dimensional");
+    CHECK_EQ(output_grad->get_shape().size(), 2,
+             "log_softmax_backward: output_grad is not 2 dimensional");
+    CHECK_EQ(input->get_shape().size(), 2,
+             "log_softmax_backward: input is not 2 dimensional");
+
     CHECK_EQ(input_grad->get_shape(), output_grad->get_shape(),
              "log_softmax_backward: shape mismatch between output grad and "
              "input grad");

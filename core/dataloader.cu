@@ -1,8 +1,3 @@
-// This file implements the data loader
-// The data loader acts as the first layer in the neural network, handling the
-// distribution of dataset during training and testing phases, with tasks such
-// as loading batch data and shuffle the dataset
-
 #include "common.cuh"
 #include "dataloader.cuh"
 
@@ -15,29 +10,29 @@
 namespace nnv2 {
 
 int DataLoader::load_train_batch() {
-    // update offset
+    // Update offset
     int start = train_data_offset;
     int end =
         std::min(start + batch_size, (int)dataset->get_train_images().size());
     train_data_offset = end;
     int size = end - start;
 
-    // initialize batch memory
+    // Initialize batch memory
     int h = dataset->get_image_height();
     int w = dataset->get_image_width();
     int n_labels = dataset->get_label_count();
     set_array_ptr(output, {size, 1, h, w});
     set_array_ptr(output_labels, {size, n_labels});
 
-    // extract a batch of train data
+    // Extract a batch of train data
     int im_stride = h * w;
     for (int i = start; i < end; i++) {
-        // train images
+        // Train images
         thrust::copy(dataset->get_train_images()[i].begin(),
                      dataset->get_train_images()[i].end(),
                      output->get_vec().begin() + (i - start) * im_stride);
 
-        // train labels, with one-hot encoding
+        // Train labels, with one-hot encoding
         int one_hot_index =
             (i - start) * n_labels + (int)dataset->get_train_labels()[i];
         output_labels->get_vec()[one_hot_index] = 1;
@@ -47,29 +42,29 @@ int DataLoader::load_train_batch() {
 }
 
 int DataLoader::load_test_batch() {
-    // update offset
+    // Update offset
     int start = test_data_offset;
     int end =
         std::min(start + batch_size, (int)dataset->get_test_images().size());
     test_data_offset = end;
     int size = end - start;
 
-    // initialize batch memory
+    // Initialize batch memory
     int h = dataset->get_image_height();
     int w = dataset->get_image_width();
     int n_labels = dataset->get_label_count();
     set_array_ptr(output, {size, 1, h, w});
     set_array_ptr(output_labels, {size, n_labels});
 
-    // extract a batch of test data
+    // Extract a batch of test data
     int im_stride = h * w;
     for (int i = start; i < end; i++) {
-        // test images
+        // Test images
         thrust::copy(dataset->get_test_images()[i].begin(),
                      dataset->get_test_images()[i].end(),
                      output->get_vec().begin() + (i - start) * im_stride);
 
-        // test labels, with one-hot encoding
+        // Test labels, with one-hot encoding
         int one_hot_index =
             (i - start) * n_labels + (int)dataset->get_test_labels()[i];
         output_labels->get_vec()[one_hot_index] = 1;

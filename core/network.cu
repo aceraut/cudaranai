@@ -1,9 +1,3 @@
-// This file implements the Network class, representing the neural network
-//
-// Pretty much a lot of stuffs are involved, but a Network object requires
-// layers for constructing the neural network, a DataLoader that acts as
-// the data provider, the Loss object, an optimizer to update the parameters.
-
 #include "common.cuh"
 #include "network.cuh"
 
@@ -23,7 +17,7 @@ void Network::add(Layer *layer) {
     layers.push_back(std::move(next));
 }
 
-// Introduces DataLoader, Loss and optimizer and connect them to the layers
+// Introduces DataLoader, Loss and Optimizer and connect them to the layers
 void Network::init(DataLoader *loader_, Loss *loss_, Optimizer *optimizer_) {
     loader = loader_;
     loss = loss_;
@@ -31,16 +25,18 @@ void Network::init(DataLoader *loader_, Loss *loss_, Optimizer *optimizer_) {
 
     CHECK_COND(layers.size() > 0, "No layers found in the network");
 
-    // connect loader to the first layer
+    // Connect loader to the first layer
     loader->connect(layers.front().get());
-    // connect each layer to the subsequent one
+
+    // Connect each layer to the subsequent one
     for (int i = 1; i < layers.size(); i++) {
         layers[i - 1]->connect(layers[i].get());
     }
-    // connect the last layer to loss layer
+
+    // Connect the last layer to loss layer
     layers.back()->connect(loss);
 
-    // register parameters to the optimizer
+    // Register parameters to the optimizer
     for (int i = 0; i < layers.size(); i++) {
         optimizer->add_parameters(layers[i]->get_parameters());
     }
@@ -63,20 +59,23 @@ void Network::train_epoch() {
         batch_count++;
         loader->load_train_batch();
 
-        // perform forward propagation to calculate prediction
+        // Perform forward phase to calculate prediction
         for (int i = 0; i < layers.size(); i++) {
             layers[i]->forward();
         }
 
-        // calculate loss value of prediction compared to actual result
+        // Calculate loss value of prediction compared to actual result
         loss_sum += loss->calculate_loss(loader->get_labels());
 
-        // backpropagate the loss gradient to the layers
+        // Perform backward phase to propagate the loss gradient to parameters
+        // in all layers
         loss->backward();
         for (int i = layers.size() - 1; i >= 0; i--) {
             layers[i]->backward();
         }
-        // update the parameters with regard to the gradient
+
+        // Update the parameters using the gradients calculated in the backward
+        // phase
         optimizer->update_parameters();
     }
 
@@ -93,12 +92,12 @@ void Network::test() {
         batch_count++;
         loader->load_test_batch();
 
-        // perform forward propagation to calculate prediction
+        // Perform forward phase to calculate prediction
         for (int i = 0; i < layers.size(); i++) {
             layers[i]->forward();
         }
 
-        // calculate loss & accuracy of prediction compared to actual result
+        // Calculate loss & accuracy of prediction compared to actual result
         loss_sum += loss->calculate_loss(loader->get_labels());
         std::pair<int, int> accuracy =
             top1_accuracy(layers.back()->get_output(), loader->get_labels());
@@ -106,7 +105,7 @@ void Network::test() {
         sample_count += accuracy.second;
     }
 
-    // print some stats here
+    // Print some stats here
     std::cout << "Avg loss (test): " << loss_sum / batch_count << ", ";
     std::cout << "Avg accuracy (test): " << 1.0 * accurate_count / sample_count
               << std::endl;
@@ -114,7 +113,6 @@ void Network::test() {
 
 // Calculate the accuracy where the label with the highest probability
 // is the correct label
-
 // TODO: optimize max reduce op in the kernel (and other similar reduce ops)
 __global__ void top1_accuracy_kernel(int size, int *is_accurate,
                                      const float *preds, const float *y,
