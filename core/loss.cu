@@ -15,18 +15,18 @@ void cross_entropy_loss(Array *output, const Array *input, const Array *y,
     CHECK_EQ(input->get_shape(), y->get_shape(),
              "calculate_loss: shape of input mismatched with y");
 
-    set_array_cache(cache, "log_pred", input->get_shape());
-    func_log(cache["log_pred"].get(), input);
+    utils::set_array_cache(cache, "log_pred", input->get_shape());
+    mathop::log(cache["log_pred"].get(), input);
 
-    set_array_cache(cache, "loss_sparse", input->get_shape());
-    func_mul(cache["loss_sparse"].get(), cache["log_pred"].get(), y);
+    utils::set_array_cache(cache, "loss_sparse", input->get_shape());
+    mathop::multiply(cache["loss_sparse"].get(), cache["log_pred"].get(), y);
 
     // Reduce the distribution matrix to one-dimensional array
-    set_array_cache(cache, "loss", {input->get_shape()[0]});
-    func_sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
+    utils::set_array_cache(cache, "loss", {input->get_shape()[0]});
+    mathop::sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
 
     // Calculate average log loss value of a batch
-    func_mean(output, cache["loss"].get(), 0, false);
+    mathop::mean(output, cache["loss"].get(), 0, false);
     output->get_vec()[0] *= -1.0;
 }
 
@@ -36,14 +36,15 @@ void cross_entropy_loss_backward(Array *input_grad, const Array *input,
              "loss_backward: shape of input grad mismatched with input");
     CHECK_EQ(input->get_shape(), y->get_shape(),
              "loss_backward: shape of input mismatched with y");
-    func_sub(input_grad, input, y);
+
+    mathop::subtract(input_grad, input, y);
 }
 
 float CrossEntropyLoss::calculate_loss(const Array *labels) {
     y = labels;
 
     const Array *input = prev->get_output();
-    set_array_ptr(output, {1});
+    utils::set_array_ptr(output, {1});
     cross_entropy_loss(output.get(), input, y, cache);
 
     return output->get_vec()[0];
@@ -51,7 +52,7 @@ float CrossEntropyLoss::calculate_loss(const Array *labels) {
 
 void CrossEntropyLoss::backward() {
     const Array *input = prev->get_output();
-    set_array_ptr(grad, input->get_shape());
+    utils::set_array_ptr(grad, input->get_shape());
     cross_entropy_loss_backward(grad.get(), input, y);
 }
 
@@ -65,15 +66,15 @@ void nll_loss(Array *output, const Array *input, const Array *y,
     CHECK_EQ(input->get_shape(), y->get_shape(),
              "calculate_loss: shape of input mismatched with y");
 
-    set_array_cache(cache, "loss_sparse", input->get_shape());
-    func_mul(cache["loss_sparse"].get(), input, y);
+    utils::set_array_cache(cache, "loss_sparse", input->get_shape());
+    mathop::multiply(cache["loss_sparse"].get(), input, y);
 
     // reduce the distribution matrix to one-dimensional array
-    set_array_cache(cache, "loss", {input->get_shape()[0]});
-    func_sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
+    utils::set_array_cache(cache, "loss", {input->get_shape()[0]});
+    mathop::sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
 
     // calculate average log loss value of a batch
-    func_mean(output, cache["loss"].get(), 0, false);
+    mathop::mean(output, cache["loss"].get(), 0, false);
     output->get_vec()[0] *= -1.0;
 }
 
@@ -82,14 +83,14 @@ void nll_loss_backward(Array *input_grad, const Array *y) {
              "calculate_loss: shape of input grad mismatched with y");
 
     int batch_size = y->get_shape()[0];
-    func_mul(input_grad, y, -1.0 / batch_size);
+    mathop::multiply(input_grad, y, -1.0 / batch_size);
 }
 
 float NLLLoss::calculate_loss(const Array *labels) {
     y = labels;
 
     const Array *input = prev->get_output();
-    set_array_ptr(output, {1});
+    utils::set_array_ptr(output, {1});
     nll_loss(output.get(), input, y, cache);
 
     return output->get_vec()[0];
@@ -97,7 +98,7 @@ float NLLLoss::calculate_loss(const Array *labels) {
 
 void NLLLoss::backward() {
     const Array *input = prev->get_output();
-    set_array_ptr(grad, input->get_shape());
+    utils::set_array_ptr(grad, input->get_shape());
     nll_loss_backward(grad.get(), y);
 }
 

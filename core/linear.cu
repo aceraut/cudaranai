@@ -23,24 +23,23 @@ void linear_forward(Array *output, const Array *input, const Array *filter) {
     CHECK_EQ(output->get_shape()[1], filter->get_shape()[1],
              "linear forward: shape mismatch between filter and output");
 
-    func_matmul(output, input, filter);
+    mathop::matmul(output, input, filter);
 }
 
 __global__ void linear_forward_bias_kernel(int size, float *output,
                                            const float *bias, int out_feats) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         int bias_idx = idx % out_feats;
         output[idx] += bias[bias_idx];
     }
 }
 
 void linear_forward_bias(Array *output, const Array *bias) {
-    CHECK_EQ(bias->get_shape()[0], 1,
-             "linear_forward_bias: bias isn't a column vector");
-
     int batch_size = output->get_shape()[0];
     int out_feats = output->get_shape()[1];
+
+    CHECK_EQ(bias->get_shape()[0], 1,
+             "linear_forward_bias: bias isn't a column vector");
     CHECK_EQ(bias->get_shape()[1], out_feats,
              "linear_forward_bias: mismatch between bias size and number of "
              "output features");
@@ -78,17 +77,17 @@ void linear_backward(Array *input_grad, Array *filter_grad, const Array *input,
              "linear backward: shape mismatch between input and its grad");
 
     // X^T
-    set_array_cache(cache, "input_t",
-                    {input->get_shape()[1], input->get_shape()[0]});
-    func_transpose(cache["input_t"].get(), input);
+    utils::set_array_cache(cache, "input_t",
+                           {input->get_shape()[1], input->get_shape()[0]});
+    mathop::transpose(cache["input_t"].get(), input);
 
     // W^T
-    set_array_cache(cache, "filter_t",
-                    {filter->get_shape()[1], filter->get_shape()[0]});
-    func_transpose(cache["filter_t"].get(), filter);
+    utils::set_array_cache(cache, "filter_t",
+                           {filter->get_shape()[1], filter->get_shape()[0]});
+    mathop::transpose(cache["filter_t"].get(), filter);
 
-    func_matmul(filter_grad, cache["input_t"].get(), output_grad);
-    func_matmul(input_grad, output_grad, cache["filter_t"].get());
+    mathop::matmul(filter_grad, cache["input_t"].get(), output_grad);
+    mathop::matmul(input_grad, output_grad, cache["filter_t"].get());
 }
 
 void linear_backward_bias(Array *bias_grad, const Array *output_grad) {
@@ -98,7 +97,7 @@ void linear_backward_bias(Array *bias_grad, const Array *output_grad) {
              "linear_backward_bias: mismatch between bias size and number of "
              "output features");
 
-    func_sum(bias_grad, output_grad, 0, false);
+    mathop::sum(bias_grad, output_grad, 0, false);
 }
 
 Linear::Linear(int in_feats, int out_feats, const Initializer *init)
@@ -122,7 +121,7 @@ void Linear::forward() {
     const Array *input = prev->get_output();
     int batch_size = input->get_shape()[0];
 
-    set_array_ptr(output, {batch_size, out_feats});
+    utils::set_array_ptr(output, {batch_size, out_feats});
 
     linear_forward(output.get(), input, filter.get());
     linear_forward_bias(output.get(), bias.get());
@@ -132,7 +131,7 @@ void Linear::backward() {
     const Array *input = prev->get_output();
     const Array *output_grad = next->get_grad();
 
-    set_array_ptr(grad, input->get_shape());
+    utils::set_array_ptr(grad, input->get_shape());
 
     linear_backward_bias(bias_grad.get(), output_grad);
     linear_backward(grad.get(), filter_grad.get(), input, filter.get(),

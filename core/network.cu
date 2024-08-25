@@ -99,6 +99,7 @@ void Network::test() {
 
         // Calculate loss & accuracy of prediction compared to actual result
         loss_sum += loss->calculate_loss(loader->get_labels());
+
         std::pair<int, int> accuracy =
             top1_accuracy(layers.back()->get_output(), loader->get_labels());
         accurate_count += accuracy.first;
@@ -117,8 +118,7 @@ void Network::test() {
 __global__ void top1_accuracy_kernel(int size, int *is_accurate,
                                      const float *preds, const float *y,
                                      int label_stride) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         preds += idx * label_stride;
         y += idx * label_stride;
 

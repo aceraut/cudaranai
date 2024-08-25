@@ -21,8 +21,8 @@ int DataLoader::load_train_batch() {
     int h = dataset->get_image_height();
     int w = dataset->get_image_width();
     int n_labels = dataset->get_label_count();
-    set_array_ptr(output, {size, 1, h, w});
-    set_array_ptr(output_labels, {size, n_labels});
+    utils::set_array_ptr(output, {size, 1, h, w});
+    utils::set_array_ptr(output_labels, {size, n_labels});
 
     // Extract a batch of train data
     int im_stride = h * w;
@@ -53,8 +53,8 @@ int DataLoader::load_test_batch() {
     int h = dataset->get_image_height();
     int w = dataset->get_image_width();
     int n_labels = dataset->get_label_count();
-    set_array_ptr(output, {size, 1, h, w});
-    set_array_ptr(output_labels, {size, n_labels});
+    utils::set_array_ptr(output, {size, 1, h, w});
+    utils::set_array_ptr(output_labels, {size, n_labels});
 
     // Extract a batch of test data
     int im_stride = h * w;

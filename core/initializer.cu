@@ -19,8 +19,7 @@ namespace nnv2 {
 // Kernel to initialize data with normal distribution
 __global__ void normal_init_kernel(int size, float *vec, float mean,
                                    float stddev, unsigned seed) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         curandState state;
         curand_init(seed, idx, 0, &state);
         vec[idx] = mean + stddev * curand_normal(&state);
@@ -43,8 +42,7 @@ static void normal_init(thrust::device_vector<float> &vec, float s) {
 // Kernel to initialize data with uniform distribution
 __global__ void uniform_init_kernel(int size, float *vec, float a, float b,
                                     unsigned seed) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         curandState state;
         curand_init(seed, idx, 0, &state);
         vec[idx] = a + (b - a) * curand_uniform(&state);

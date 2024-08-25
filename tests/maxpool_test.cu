@@ -50,21 +50,6 @@ void test_maxpool_forward() {
 }
 
 void test_maxpool_backward() {
-    int batch_size = 2;
-    int in_feats = 2;
-    int in_h = 4;
-    int in_w = 4;
-
-    int pad_h = 1;
-    int pad_w = 1;
-    int kernel_h = 2;
-    int kernel_w = 2;
-    int stride_h = 2;
-    int stride_w = 2;
-
-    int out_h = (in_h + 2 * pad_h - kernel_h) / stride_h + 1;
-    int out_w = (in_w + 2 * pad_w - kernel_w) / stride_w + 1;
-
     Array input({2, 2, 4, 4}, {1, 3, 2, 1, 4, 6, 5, 1, 1, 2, 1, 3, 0, 2, 4, 1,
                                0, 1, 1, 0, 1, 0, 2, 1, 2, 3, 1, 2, 1, 0, 1, 3,
                                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,

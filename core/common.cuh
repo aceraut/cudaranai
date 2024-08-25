@@ -48,6 +48,17 @@ constexpr float EPS = 1e-8;
 
 #define RAW_PTR(vec) (thrust::raw_pointer_cast(vec.data()))
 
+// Rather than completely eliminating the loop when parallelizing the
+// computation by assigning each independent iteration to a thread, we make the
+// kernel loops over the data array one grid-size at a time, allowing the kernel
+// call to easily scale the number of threads while keeping the process parallel
+//
+// Reference:
+// https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
+#define CUDA_GRID_STRIDE_LOOP(i, n)                                            \
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                 \
+         i += gridDim.x * blockDim.x)
+
 // array.cc
 // Array object similar to numpy array
 class Array {
@@ -79,6 +90,15 @@ private:
     std::vector<int> shape;
 };
 
+// Temporary Array map to cache local Array objects
+using ArrayMap = std::unordered_map<std::string, std::unique_ptr<Array>>;
+// A pair of weight array and gradient array, used by Optimizer to recalculate
+// the weight.
+using Param = std::pair<Array *, Array *>;
+
+// Helper functions, implemented in utils.cu.
+namespace utils {
+
 // Initializes Array object inside smart pointer
 void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 
@@ -86,55 +106,54 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 // and they can be called multiple times if the size of train data is large,
 // it's better to cache these temporary Array objects instead of creating new
 // ones on every call.
-using ArrayMap = std::unordered_map<std::string, std::unique_ptr<Array>>;
-
 void set_array_cache(ArrayMap &map, std::string key,
                      const std::vector<int> &shape);
 
-// A pair of weight array and gradient array, used by Optimizer to recalculate
-// the weight.
-using Param = std::pair<Array *, Array *>;
+} // namespace utils
 
-// Math operations on Array objects. Defined in mathfunc.cc
+// Math operations for Array objects, implemented in mathop.cu.
+namespace mathop {
 
 // Element-wise addition of 2 arrays
-void func_add(Array *output, const Array *input1, const Array *input2);
+void add(Array *output, const Array *input1, const Array *input2);
 // Element-wise addition of an array and a scalar
-void func_add(Array *output, const Array *input, float value);
+void add(Array *output, const Array *input, float value);
 
 // Element-wise subtraction of 2 arrays
-void func_sub(Array *output, const Array *input1, const Array *input2);
+void subtract(Array *output, const Array *input1, const Array *input2);
 // Element-wise subtraction of an array and a scalar
-void func_sub(Array *output, const Array *input, float value);
+void subtract(Array *output, const Array *input, float value);
 
 // Element-wise multiplication of 2 arrays
 // See func_matmul() for the dot product of 2 arrays
-void func_mul(Array *output, const Array *input1, const Array *input2);
+void multiply(Array *output, const Array *input1, const Array *input2);
 // Element-wise multiplication of an array and a scalar
-void func_mul(Array *output, const Array *input, float value);
+void multiply(Array *output, const Array *input, float value);
 
 // Element-wise division of 2 arrays
-void func_div(Array *output, const Array *input1, const Array *input2);
+void divide(Array *output, const Array *input1, const Array *input2);
 
 // Element-wise natual logarithm of 2 arrays
-void func_log(Array *output, const Array *input);
+void log(Array *output, const Array *input);
 
 // Matrix multiplication or dot product of two arrays
 // `broadcast` tells the function which input array needs replicating to match
 // with the other input's shape constraints. If broadcast is 0, no replication
 // is needed.
-void func_matmul(Array *output, const Array *input1, const Array *input2,
-                 int broadcast = 0);
+void matmul(Array *output, const Array *input1, const Array *input2,
+            int broadcast = 0);
 
 // Matrix transpose
-void func_transpose(Array *output, const Array *input);
+void transpose(Array *output, const Array *input);
 
 // Sum of array elements over an axis
 // `reduce` tells the function that the output must have that axis removed
-void func_sum(Array *output, const Array *input, int axis, bool reduce = true);
+void sum(Array *output, const Array *input, int axis, bool reduce = true);
 
 // Mean value of array elements over an axis
 // `reduce` tells the function that the output must have that axis removed
-void func_mean(Array *output, const Array *input, int axis, bool reduce = true);
+void mean(Array *output, const Array *input, int axis, bool reduce = true);
+
+} // namespace mathop
 
 } // namespace nnv2

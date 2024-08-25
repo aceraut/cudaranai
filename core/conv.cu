@@ -42,9 +42,7 @@ __global__ void im2col_kernel(int size, const float *im, float *col, int in_h,
                               int out_h, int out_w, int im_stride,
                               int col_stride) {
     // Each thread handles a flattened column of size filter_h * filter_w.
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         // Calculate base coords of top-left element of image on a filter.
         int out_x = (idx / out_w) % out_h;
         int out_y = idx % out_w;
@@ -66,6 +64,7 @@ __global__ void im2col_kernel(int size, const float *im, float *col, int in_h,
                 } else {
                     col[idx] = 0;
                 }
+
                 col += size; // Unrolled image width is out_h * out_w = size
             }
         }
@@ -94,6 +93,7 @@ void im2col(const Array *im, Array *col, int pad_h, int pad_w, int filter_h,
     im2col_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, im_raw, col_raw, im_h, im_w, pad_h, pad_w, filter_h, filter_w,
         stride_h, stride_w, out_h, out_w, im_stride, col_stride);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -131,7 +131,7 @@ void conv_forward(Array *output, const Array *input, Array *col, Array *filter,
     output->reshape({batch_size, out_feats, out_h * out_w});
 
     // Y = K * Cols
-    func_matmul(output, filter, col, 1);
+    mathop::matmul(output, filter, col, 1);
 
     // Recover shape
     filter->reshape({out_feats, in_feats, filter_h, filter_w});
@@ -141,25 +141,23 @@ void conv_forward(Array *output, const Array *input, Array *col, Array *filter,
 __global__ void conv_forward_bias_kernel(int size, float *output,
                                          const float *bias, int im_stride,
                                          int out_feats) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         int bias_idx = (idx / im_stride) % out_feats;
         output[idx] += bias[bias_idx];
     }
 }
 
 void conv_forward_bias(Array *output, const Array *bias) {
+    int batch_size = output->get_shape()[0];
+    int out_feats = output->get_shape()[1];
+    int out_h = output->get_shape()[2];
+    int out_w = output->get_shape()[3];
+
     CHECK_EQ(bias->get_shape()[0], 1,
              "conv_forward_bias: bias isn't a column vector");
-
-    int out_feats = output->get_shape()[1];
     CHECK_EQ(bias->get_shape()[1], out_feats,
              "conv_forward_bias: mismatch between bias size and number of "
              "output features");
-
-    int batch_size = output->get_shape()[0];
-    int out_h = output->get_shape()[2];
-    int out_w = output->get_shape()[3];
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *bias_raw = RAW_PTR(bias->get_vec());
@@ -189,15 +187,14 @@ void conv_forward_bias(Array *output, const Array *bias) {
 // Transforms unrolled input gradient to its original representation
 // Note that unlike im2col, elements that have the same index in the original
 // format are rolled back using sum and not assignment.
+
 __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
                               int in_w, int pad_h, int pad_w, int filter_h,
                               int filter_w, int stride_h, int stride_w,
                               int out_h, int out_w, int im_stride,
                               int col_stride) {
     // Each thread handles a pixel in the input image
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         // Point to image and filter column that this thread handles
         int feat_idx = blockIdx.y;
         im += feat_idx * im_stride;
@@ -217,6 +214,7 @@ __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
         int out_y_end = fminf(out_w, in_y / stride_w + 1);
 
         float value = 0;
+
         for (int out_x = out_x_start; out_x < out_x_end; out_x++) {
             for (int out_y = out_y_start; out_y < out_y_end; out_y++) {
                 // Locate the filter position that overlaps this pixel
@@ -230,6 +228,7 @@ __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
                 value += col[col_idx];
             }
         }
+
         im[idx] = value;
     }
 }
@@ -256,6 +255,7 @@ void col2im(const Array *col, Array *im, int pad_h, int pad_w, int filter_h,
     col2im_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, im_raw, col_raw, im_h, im_w, pad_h, pad_w, filter_h, filter_w,
         stride_h, stride_w, out_h, out_w, im_stride, col_stride);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -299,35 +299,36 @@ void conv_backward(Array *input_grad, Array *filter_grad, Array *output_grad,
     output_grad->reshape({batch_size, out_feats, out_h * out_w});
 
     // Cols^T
-    set_array_cache(
+    utils::set_array_cache(
         cache, "col_t",
         {batch_size, out_h * out_w, in_feats * filter_h * filter_w});
-    func_transpose(cache["col_t"].get(), col);
+    mathop::transpose(cache["col_t"].get(), col);
 
     // dL/dY * Cols^T
-    set_array_cache(cache, "filter_grad_unfolded",
-                    {batch_size, out_feats, in_feats * filter_h * filter_w});
-    func_matmul(cache["filter_grad_unfolded"].get(), output_grad,
-                cache["col_t"].get());
+    utils::set_array_cache(
+        cache, "filter_grad_unfolded",
+        {batch_size, out_feats, in_feats * filter_h * filter_w});
+    mathop::matmul(cache["filter_grad_unfolded"].get(), output_grad,
+                   cache["col_t"].get());
 
     // dL/dK = sum(dL/dY * Cols^T) along the batch
     cache["filter_grad_unfolded"]->reshape(
         {batch_size, out_feats, in_feats, filter_h, filter_w});
-    func_sum(filter_grad, cache["filter_grad_unfolded"].get(), 0);
+    mathop::sum(filter_grad, cache["filter_grad_unfolded"].get(), 0);
 
     // K^T
     // Reshape K to (o_f, i_f * k_h * k_w)
     filter->reshape({out_feats, in_feats * filter_h * filter_w});
-    set_array_cache(cache, "filter_t",
-                    {in_feats * filter_h * filter_w, out_feats});
-    func_transpose(cache["filter_t"].get(), filter);
+    utils::set_array_cache(cache, "filter_t",
+                           {in_feats * filter_h * filter_w, out_feats});
+    mathop::transpose(cache["filter_t"].get(), filter);
 
     // dL/dCols
-    set_array_cache(
+    utils::set_array_cache(
         cache, "col_grad",
         {batch_size, in_feats * filter_h * filter_w, out_h * out_w});
-    func_matmul(cache["col_grad"].get(), cache["filter_t"].get(), output_grad,
-                1);
+    mathop::matmul(cache["col_grad"].get(), cache["filter_t"].get(),
+                   output_grad, 1);
 
     // dL/dX
     col2im(cache["col_grad"].get(), input_grad, pad_h, pad_w, filter_h,
@@ -352,11 +353,12 @@ void conv_backward_bias(Array *bias_grad, const Array *output_grad,
         "conv_backward_bias: mismatch between bias grad size and number of "
         "output features");
 
-    set_array_cache(cache, "fold3", {batch_size, out_feats, out_h});
-    set_array_cache(cache, "fold2", {batch_size, out_feats});
-    func_sum(cache["fold3"].get(), output_grad, 3);
-    func_sum(cache["fold2"].get(), cache["fold3"].get(), 2);
-    func_sum(bias_grad, cache["fold2"].get(), 0, false);
+    utils::set_array_cache(cache, "fold3", {batch_size, out_feats, out_h});
+    utils::set_array_cache(cache, "fold2", {batch_size, out_feats});
+
+    mathop::sum(cache["fold3"].get(), output_grad, 3);
+    mathop::sum(cache["fold2"].get(), cache["fold3"].get(), 2);
+    mathop::sum(bias_grad, cache["fold2"].get(), 0, false);
 }
 
 Conv2D::Conv2D(int in_feats, int out_feats, int in_h, int in_w, int pad_h,
@@ -389,9 +391,9 @@ void Conv2D::forward() {
     int out_h = (in_h + 2 * pad_h - filter_h) / stride_h + 1;
     int out_w = (in_w + 2 * pad_w - filter_w) / stride_w + 1;
 
-    set_array_ptr(output, {batch_size, out_feats, out_h, out_w});
-    set_array_ptr(col,
-                  {batch_size, in_feats * filter_h * filter_w, out_h * out_w});
+    utils::set_array_ptr(output, {batch_size, out_feats, out_h, out_w});
+    utils::set_array_ptr(
+        col, {batch_size, in_feats * filter_h * filter_w, out_h * out_w});
 
     conv_forward(output.get(), input, col.get(), filter.get(), pad_h, pad_w,
                  stride_h, stride_w);
@@ -402,7 +404,7 @@ void Conv2D::backward() {
     const Array *input = prev->get_output();
     Array *output_grad = next->get_grad();
 
-    set_array_ptr(grad, input->get_shape());
+    utils::set_array_ptr(grad, input->get_shape());
 
     conv_backward_bias(bias_grad.get(), output_grad, cache);
     conv_backward(grad.get(), filter_grad.get(), output_grad, input,

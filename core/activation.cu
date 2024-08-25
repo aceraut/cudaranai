@@ -175,13 +175,13 @@ void softmax_forward(Array *output, const Array *input) {
 
 void Softmax::forward() {
     const Array *input = prev->get_output();
-    set_array_ptr(output, input->get_shape());
+    utils::set_array_ptr(output, input->get_shape());
     softmax_forward(output.get(), input);
 }
 
 void Softmax::backward() {
     const Array *output_grad = next->get_grad();
-    set_array_ptr(grad, output_grad->get_shape());
+    utils::set_array_ptr(grad, output_grad->get_shape());
 
     // Backpropagation at Softmax layer involves only copying the output
     // gradient to the input gradient.
@@ -239,6 +239,7 @@ void log_softmax_forward(Array *output, const Array *input) {
 
     log_softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
         batch_size, output_raw, input_raw, batch_stride);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -305,19 +306,22 @@ void log_softmax_backward(Array *input_grad, const Array *output_grad,
 
     log_softmax_backward_kernel<<<grid_size, BLOCK_SIZE>>>(
         batch_size, input_grad_raw, output_grad_raw, input_raw, batch_stride);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
 void LogSoftmax::forward() {
     const Array *input = prev->get_output();
-    set_array_ptr(output, input->get_shape());
+    utils::set_array_ptr(output, input->get_shape());
+
     log_softmax_forward(output.get(), input);
 }
 
 void LogSoftmax::backward() {
     const Array *input = prev->get_output();
     const Array *output_grad = next->get_grad();
-    set_array_ptr(grad, input->get_shape());
+    utils::set_array_ptr(grad, input->get_shape());
+
     log_softmax_backward(grad.get(), output_grad, input);
 }
 

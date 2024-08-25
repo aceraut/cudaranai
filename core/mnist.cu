@@ -44,6 +44,7 @@ static unsigned reverse_int(unsigned i) {
     ch2 = (i >> 8) & 255;
     ch3 = (i >> 16) & 255;
     ch4 = (i >> 24) & 255;
+
     return ((unsigned)ch1 << 24) + ((unsigned)ch2 << 16) +
            ((unsigned)ch3 << 8) + (unsigned)ch4;
 }
@@ -79,8 +80,10 @@ void Mnist::read_images(std::vector<std::vector<float>> &output,
         // Read images
         std::vector<unsigned char> image(h * w);
         std::vector<float> scaled_image(h * w);
+
         for (int i = 0; i < n_images; i++) {
             file.read((char *)image.data(), sizeof(unsigned char) * h * w);
+
             for (int k = 0; k < h * w; k++) {
                 scaled_image[k] = image[k];
             }
@@ -130,12 +133,13 @@ void Mnist::standardize_images(std::vector<std::vector<float>> &images) {
     // Calculate mean and standard deviation of all pixels in dataset
     int n_pixels = images.size() * h * w;
     float mean = 0.0;
+    float stddev = 0.0;
+
     for (const std::vector<float> &im : images) {
         mean += std::accumulate(im.begin(), im.end(), 0.0);
     }
     mean /= n_pixels;
 
-    float stddev = 0.0;
     for (const std::vector<float> &im : images) {
         stddev +=
             std::accumulate(im.begin(), im.end(), 0.0, [&](float s, float x) {

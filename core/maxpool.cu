@@ -20,9 +20,7 @@ __global__ void maxpool_forward_kernel(int size, float *output,
                                        int stride_w, int out_h, int out_w,
                                        int in_stride, int out_stride) {
     // Each thread handles a pixel in the output image
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         // Point to input and output images that this thread handles
         int feat_idx = blockIdx.y;
         input += feat_idx * in_stride;
@@ -44,6 +42,7 @@ __global__ void maxpool_forward_kernel(int size, float *output,
 
         float max_val = -FLT_MAX;
         float max_idx = -1;
+
         for (int in_x = in_x_start; in_x < in_x_end; in_x++) {
             for (int in_y = in_y_start; in_y < in_y_end; in_y++) {
                 int in_idx = in_x * in_w + in_y;
@@ -80,6 +79,7 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     int in_h = input->get_shape()[2];
     int in_w = input->get_shape()[3];
     int in_stride = in_h * in_w;
+
     int out_h = output->get_shape()[2];
     int out_w = output->get_shape()[3];
     int size = out_h * out_w; // is also out_stride
@@ -93,6 +93,7 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     maxpool_forward_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, output_raw, indices_raw, input_raw, in_h, in_w, pad_h, pad_w,
         filter_h, filter_w, stride_h, stride_w, out_h, out_w, in_stride, size);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -110,9 +111,7 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
                         int stride_w, int out_h, int out_w, int in_stride,
                         int out_stride) {
     // Each thread handles a pixel in the input image
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         // Point to input and output images that this thread handles
         int feat_idx = blockIdx.y;
         input_grad += feat_idx * in_stride;
@@ -143,6 +142,7 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
                 }
             }
         }
+
         input_grad[idx] = value;
     }
 }
@@ -184,6 +184,7 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
         size, input_grad_raw, output_grad_raw, indices_raw, in_h, in_w, pad_h,
         pad_w, filter_h, filter_w, stride_h, stride_w, out_h, out_w, size,
         out_stride);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -203,8 +204,8 @@ void MaxPool2D::forward() {
     int out_h = (in_h + 2 * pad_h - kernel_h) / stride_h + 1;
     int out_w = (in_w + 2 * pad_w - kernel_w) / stride_w + 1;
 
-    set_array_ptr(output, {batch_size, in_feats, out_h, out_w});
-    set_array_ptr(indices, output->get_shape());
+    utils::set_array_ptr(output, {batch_size, in_feats, out_h, out_w});
+    utils::set_array_ptr(indices, output->get_shape());
 
     maxpool_forward(output.get(), input, indices.get(), pad_h, pad_w, kernel_h,
                     kernel_w, stride_h, stride_w);
@@ -213,7 +214,9 @@ void MaxPool2D::forward() {
 void MaxPool2D::backward() {
     const Array *input = prev->get_output();
     const Array *output_grad = next->get_grad();
-    set_array_ptr(grad, input->get_shape());
+
+    utils::set_array_ptr(grad, input->get_shape());
+
     maxpool_backward(grad.get(), output_grad, indices.get(), pad_h, pad_w,
                      kernel_h, kernel_w, stride_h, stride_w);
 }

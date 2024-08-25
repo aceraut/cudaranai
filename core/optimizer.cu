@@ -16,6 +16,7 @@ void SGD::add_parameters(std::vector<Param> params) {
 
         weights.push_back(weight);
         grads.push_back(grad);
+
         if (momentum != 0) {
             velocities.push_back(std::make_unique<Array>(grad->get_shape(), 0));
         }
@@ -24,8 +25,7 @@ void SGD::add_parameters(std::vector<Param> params) {
 
 __global__ void sgd_kernel(int size, float *weight, const float *grad, float lr,
                            float decay) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         float g = grad[idx] + decay * weight[idx];
         weight[idx] -= lr * g;
     }
@@ -47,8 +47,7 @@ static void sgd_single(Array *weight, const Array *grad, float lr,
 __global__ void sgd_momentum_kernel(int size, float *weight, const float *grad,
                                     float *velocity, float lr, float decay,
                                     float momentum) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         float g = grad[idx] + decay * weight[idx];
         velocity[idx] = momentum * velocity[idx] + g;
         weight[idx] -= lr * velocity[idx];
@@ -96,8 +95,7 @@ void RMSProp::add_parameters(std::vector<Param> params) {
 __global__ void rmsprop_kernel(int size, float *weight, const float *grad,
                                float *mean_sqr_grad, float lr, float decay,
                                float beta) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         float g = grad[idx] + decay * weight[idx];
         mean_sqr_grad[idx] = beta * mean_sqr_grad[idx] + (1 - beta) * g * g;
         weight[idx] -= g * lr / (sqrtf(mean_sqr_grad[idx]) + EPS);
@@ -144,8 +142,7 @@ __global__ void adam_kernel(int size, float *weight, const float *grad,
                             float *mean_grad, float *mean_sqr_grad, float lr,
                             float decay, float beta1, float beta2,
                             float beta1_pow, float beta2_pow) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         float g = grad[idx] + decay * weight[idx];
         mean_grad[idx] = beta1 * mean_grad[idx] + (1 - beta1) * g;
         mean_sqr_grad[idx] = beta2 * mean_sqr_grad[idx] + (1 - beta2) * g * g;
@@ -172,6 +169,7 @@ static void adam_single(Array *weight, const Array *grad, Array *mean_grad,
     adam_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, weight_raw, grad_raw, mean_grad_raw, mean_sqr_grad_raw, lr, decay,
         beta1, beta2, beta1_pow, beta2_pow);
+
     CUDA_POST_KERNEL_CHECK;
 }
 
