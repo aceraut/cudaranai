@@ -125,9 +125,7 @@ void Tanh::backward() {
 // value from every vector element to avoid overflow when calling exp().
 __global__ void softmax_forward_kernel(int size, float *output,
                                        const float *input, int stride) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         input += idx * stride;
         output += idx * stride;
 
@@ -196,9 +194,7 @@ void Softmax::backward() {
 // value from every vector element to avoid overflow when calling exp().
 __global__ void log_softmax_forward_kernel(int size, float *output,
                                            const float *input, int stride) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         input += idx * stride;
         output += idx * stride;
 
@@ -248,9 +244,7 @@ void log_softmax_forward(Array *output, const Array *input) {
 __global__ void log_softmax_backward_kernel(int size, float *input_grad,
                                             const float *output_grad,
                                             const float *input, int stride) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < size) {
+    CUDA_GRID_STRIDE_LOOP(idx, size) {
         input_grad += idx * stride;
         output_grad += idx * stride;
         input += idx * stride;
