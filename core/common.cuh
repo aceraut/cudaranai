@@ -48,10 +48,11 @@ constexpr float EPS = 1e-8;
 
 #define RAW_PTR(vec) (thrust::raw_pointer_cast(vec.data()))
 
-// Rather than completely eliminating the loop when parallelizing the
-// computation by assigning each independent iteration to a thread, we make the
-// kernel loops over the data array one grid-size at a time, allowing the kernel
-// call to easily scale the number of threads while keeping the process parallel
+// Instead of completely unrolling the loop when parallelizing the computation
+// by assigning each independent iteration to a thread, we use a grid-stride
+// loop in the kernel. This approach allows the kernel to loop over the data 
+// array one grid-size at a time, making it easier to scale the number of
+// threads while maintaining parallelism.
 //
 // Reference:
 // https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
@@ -102,10 +103,10 @@ namespace utils {
 // Initializes Array object inside smart pointer
 void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 
-// As several functions in the training process require temporary Array objects,
-// and they can be called multiple times if the size of train data is large,
-// it's better to cache these temporary Array objects instead of creating new
-// ones on every call.
+// Since several functions in the training process require temporary Array
+// objects, and these functions may be called multiple times when the training
+// data is large, it's more efficient to cache these temporary Array objects
+// instead of creating new ones for each call.
 void set_array_cache(ArrayMap &map, std::string key,
                      const std::vector<int> &shape);
 
@@ -147,11 +148,11 @@ void matmul(Array *output, const Array *input1, const Array *input2,
 void transpose(Array *output, const Array *input);
 
 // Sum of array elements over an axis
-// `reduce` tells the function that the output must have that axis removed
+// `reduce` tells the function that the output must have that axis removed.
 void sum(Array *output, const Array *input, int axis, bool reduce = true);
 
 // Mean value of array elements over an axis
-// `reduce` tells the function that the output must have that axis removed
+// `reduce` tells the function that the output must have that axis removed.
 void mean(Array *output, const Array *input, int axis, bool reduce = true);
 
 } // namespace mathop
