@@ -26,7 +26,7 @@ __global__ void normal_init_kernel(int size, float *vec, float mean,
     }
 }
 
-static void normal_init(thrust::device_vector<float> &vec, float s) {
+static void normal_init(VecType &vec, float s) {
     float *vec_raw = RAW_PTR(vec);
     unsigned seed =
         (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();
@@ -49,7 +49,7 @@ __global__ void uniform_init_kernel(int size, float *vec, float a, float b,
     }
 }
 
-static void uniform_init(thrust::device_vector<float> &vec, float r) {
+static void uniform_init(VecType &vec, float r) {
     float *vec_raw = RAW_PTR(vec);
     unsigned seed =
         (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();

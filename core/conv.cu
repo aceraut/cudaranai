@@ -73,10 +73,12 @@ __global__ void im2col_kernel(int size, const float *im, float *col, int in_h,
 
 void im2col(const Array *im, Array *col, int pad_h, int pad_w, int filter_h,
             int filter_w, int stride_h, int stride_w) {
-    int batch_size = im->get_shape()[0];
-    int im_feats = im->get_shape()[1];
-    int im_h = im->get_shape()[2];
-    int im_w = im->get_shape()[3];
+    const ShapeType &im_shape = im->get_shape();
+
+    int batch_size = im_shape[0];
+    int im_feats = im_shape[1];
+    int im_h = im_shape[2];
+    int im_w = im_shape[3];
 
     // Launch kernels
     const float *im_raw = RAW_PTR(im->get_vec());
@@ -99,28 +101,30 @@ void im2col(const Array *im, Array *col, int pad_h, int pad_w, int filter_h,
 
 void conv_forward(Array *output, const Array *input, Array *col, Array *filter,
                   int pad_h, int pad_w, int stride_h, int stride_w) {
-    CHECK_EQ(output->get_shape().size(), 4, "conv_forward: output shape error");
-    CHECK_EQ(input->get_shape().size(), 4, "conv_forward: input shape error");
-    CHECK_EQ(col->get_shape().size(), 3, "conv_forward: col shape error");
-    CHECK_EQ(filter->get_shape().size(), 4, "conv_forward: filter shape error");
+    const ShapeType &input_shape = input->get_shape();
+    const ShapeType &output_shape = output->get_shape();
+    const ShapeType &col_shape = col->get_shape();
+    const ShapeType &filter_shape = filter->get_shape();
 
-    int batch_size = input->get_shape()[0];
-    int in_feats = input->get_shape()[1];
+    CHECK_EQ(input_shape.size(), 4, "conv_forward: input shape error");
+    CHECK_EQ(output_shape.size(), 4, "conv_forward: output shape error");
+    CHECK_EQ(col_shape.size(), 3, "conv_forward: col shape error");
+    CHECK_EQ(filter_shape.size(), 4, "conv_forward: filter shape error");
 
-    CHECK_EQ(output->get_shape()[0], batch_size,
-             "conv_forward: batch size error");
+    int batch_size = input_shape[0];
+    int in_feats = input_shape[1];
 
-    int out_feats = output->get_shape()[1];
-    int out_h = output->get_shape()[2];
-    int out_w = output->get_shape()[3];
+    CHECK_EQ(output_shape[0], batch_size, "conv_forward: batch size error");
 
-    CHECK_EQ(filter->get_shape()[0], out_feats,
-             "conv_forward: feature size error");
-    CHECK_EQ(filter->get_shape()[1], in_feats,
-             "conv_forward: feature size error");
+    int out_feats = output_shape[1];
+    int out_h = output_shape[2];
+    int out_w = output_shape[3];
 
-    int filter_h = filter->get_shape()[2];
-    int filter_w = filter->get_shape()[3];
+    CHECK_EQ(filter_shape[0], out_feats, "conv_forward: feature size error");
+    CHECK_EQ(filter_shape[1], in_feats, "conv_forward: feature size error");
+
+    int filter_h = filter_shape[2];
+    int filter_w = filter_shape[3];
 
     // Cols = im2col(X)
     im2col(input, col, pad_h, pad_w, filter_h, filter_w, stride_w, stride_h);
@@ -131,7 +135,7 @@ void conv_forward(Array *output, const Array *input, Array *col, Array *filter,
     output->reshape({batch_size, out_feats, out_h * out_w});
 
     // Y = K * Cols
-    mathop::matmul(output, filter, col, 1);
+    ops::matmul(output, filter, col, 1);
 
     // Recover shape
     filter->reshape({out_feats, in_feats, filter_h, filter_w});
@@ -148,14 +152,16 @@ __global__ void conv_forward_bias_kernel(int size, float *output,
 }
 
 void conv_forward_bias(Array *output, const Array *bias) {
-    int batch_size = output->get_shape()[0];
-    int out_feats = output->get_shape()[1];
-    int out_h = output->get_shape()[2];
-    int out_w = output->get_shape()[3];
+    const ShapeType &output_shape = output->get_shape();
+    const ShapeType &bias_shape = bias->get_shape();
 
-    CHECK_EQ(bias->get_shape()[0], 1,
-             "conv_forward_bias: bias isn't a column vector");
-    CHECK_EQ(bias->get_shape()[1], out_feats,
+    int batch_size = output_shape[0];
+    int out_feats = output_shape[1];
+    int out_h = output_shape[2];
+    int out_w = output_shape[3];
+
+    CHECK_EQ(bias_shape[0], 1, "conv_forward_bias: bias isn't a column vector");
+    CHECK_EQ(bias_shape[1], out_feats,
              "conv_forward_bias: mismatch between bias size and number of "
              "output features");
 
@@ -187,7 +193,6 @@ void conv_forward_bias(Array *output, const Array *bias) {
 // Transforms unrolled input gradient to its original representation
 // Note that unlike im2col, elements that have the same index in the original
 // format are rolled back using sum and not assignment.
-
 __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
                               int in_w, int pad_h, int pad_w, int filter_h,
                               int filter_w, int stride_h, int stride_w,
@@ -235,10 +240,12 @@ __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
 
 void col2im(const Array *col, Array *im, int pad_h, int pad_w, int filter_h,
             int filter_w, int stride_h, int stride_w) {
-    int batch_size = im->get_shape()[0];
-    int im_feats = im->get_shape()[1];
-    int im_h = im->get_shape()[2];
-    int im_w = im->get_shape()[3];
+    const ShapeType &im_shape = im->get_shape();
+
+    int batch_size = im_shape[0];
+    int im_feats = im_shape[1];
+    int im_h = im_shape[2];
+    int im_w = im_shape[3];
 
     // Launch kernels
     float *im_raw = RAW_PTR(im->get_vec());
@@ -264,36 +271,40 @@ void conv_backward(Array *input_grad, Array *filter_grad, Array *output_grad,
                    const Array *input, Array *filter, const Array *col,
                    int pad_h, int pad_w, int stride_h, int stride_w,
                    ArrayMap &cache) {
-    CHECK_EQ(input_grad->get_shape().size(), 4,
+    const ShapeType &input_grad_shape = input_grad->get_shape();
+    const ShapeType &filter_grad_shape = filter_grad->get_shape();
+    const ShapeType &output_grad_shape = output_grad->get_shape();
+    const ShapeType &input_shape = input->get_shape();
+    const ShapeType &filter_shape = filter->get_shape();
+    const ShapeType &col_shape = col->get_shape();
+
+    CHECK_EQ(input_grad_shape.size(), 4,
              "conv_backward: input gradient shape error");
-    CHECK_EQ(filter_grad->get_shape().size(), 4,
-             "conv_backward: input shape error");
-    CHECK_EQ(col->get_shape().size(), 3, "conv_backward: col shape error");
-    CHECK_EQ(output_grad->get_shape().size(), 4,
+    CHECK_EQ(filter_grad_shape.size(), 4, "conv_backward: input shape error");
+    CHECK_EQ(col_shape.size(), 3, "conv_backward: col shape error");
+    CHECK_EQ(output_grad_shape.size(), 4,
              "conv_backward: output gradient shape error");
 
-    CHECK_EQ(input->get_shape(), input_grad->get_shape(),
+    CHECK_EQ(input_shape, input_grad_shape,
              "conv_backward: shape mismatch between input and its gradient");
-    CHECK_EQ(filter->get_shape(), filter_grad->get_shape(),
+    CHECK_EQ(filter_shape, filter_grad_shape,
              "conv_backward: shape mismatch between filter and its gradient");
 
-    int batch_size = input->get_shape()[0];
-    int in_feats = input->get_shape()[1];
+    int batch_size = input_shape[0];
+    int in_feats = input_shape[1];
 
-    CHECK_EQ(output_grad->get_shape()[0], batch_size,
+    CHECK_EQ(output_grad_shape[0], batch_size,
              "conv_backward: batch size error");
 
-    int out_feats = output_grad->get_shape()[1];
-    int out_h = output_grad->get_shape()[2];
-    int out_w = output_grad->get_shape()[3];
+    int out_feats = output_grad_shape[1];
+    int out_h = output_grad_shape[2];
+    int out_w = output_grad_shape[3];
 
-    CHECK_EQ(filter->get_shape()[0], out_feats,
-             "conv_backward: feature size error");
-    CHECK_EQ(filter->get_shape()[1], in_feats,
-             "conv_backward: feature size error");
+    CHECK_EQ(filter_shape[0], out_feats, "conv_backward: feature size error");
+    CHECK_EQ(filter_shape[1], in_feats, "conv_backward: feature size error");
 
-    int filter_h = filter->get_shape()[2];
-    int filter_w = filter->get_shape()[3];
+    int filter_h = filter_shape[2];
+    int filter_w = filter_shape[3];
 
     // Reshape dL/dY to (n, o_f, o_h * o_w)
     output_grad->reshape({batch_size, out_feats, out_h * out_w});
@@ -302,33 +313,33 @@ void conv_backward(Array *input_grad, Array *filter_grad, Array *output_grad,
     utils::set_array_cache(
         cache, "col_t",
         {batch_size, out_h * out_w, in_feats * filter_h * filter_w});
-    mathop::transpose(cache["col_t"].get(), col);
+    ops::transpose(cache["col_t"].get(), col);
 
     // dL/dY * Cols^T
     utils::set_array_cache(
         cache, "filter_grad_unfolded",
         {batch_size, out_feats, in_feats * filter_h * filter_w});
-    mathop::matmul(cache["filter_grad_unfolded"].get(), output_grad,
-                   cache["col_t"].get());
+    ops::matmul(cache["filter_grad_unfolded"].get(), output_grad,
+                cache["col_t"].get());
 
     // dL/dK = sum(dL/dY * Cols^T) along the batch
     cache["filter_grad_unfolded"]->reshape(
         {batch_size, out_feats, in_feats, filter_h, filter_w});
-    mathop::sum(filter_grad, cache["filter_grad_unfolded"].get(), 0);
+    ops::sum(filter_grad, cache["filter_grad_unfolded"].get(), 0);
 
     // K^T
     // Reshape K to (o_f, i_f * k_h * k_w)
     filter->reshape({out_feats, in_feats * filter_h * filter_w});
     utils::set_array_cache(cache, "filter_t",
                            {in_feats * filter_h * filter_w, out_feats});
-    mathop::transpose(cache["filter_t"].get(), filter);
+    ops::transpose(cache["filter_t"].get(), filter);
 
     // dL/dCols
     utils::set_array_cache(
         cache, "col_grad",
         {batch_size, in_feats * filter_h * filter_w, out_h * out_w});
-    mathop::matmul(cache["col_grad"].get(), cache["filter_t"].get(),
-                   output_grad, 1);
+    ops::matmul(cache["col_grad"].get(), cache["filter_t"].get(), output_grad,
+                1);
 
     // dL/dX
     col2im(cache["col_grad"].get(), input_grad, pad_h, pad_w, filter_h,
@@ -341,24 +352,26 @@ void conv_backward(Array *input_grad, Array *filter_grad, Array *output_grad,
 
 void conv_backward_bias(Array *bias_grad, const Array *output_grad,
                         ArrayMap &cache) {
-    CHECK_EQ(bias_grad->get_shape()[0], 1,
+    const ShapeType &bias_grad_shape = bias_grad->get_shape();
+    const ShapeType &output_grad_shape = output_grad->get_shape();
+
+    CHECK_EQ(bias_grad_shape[0], 1,
              "conv_backward_bias: bias grad isn't a column vector");
 
-    int batch_size = output_grad->get_shape()[0];
-    int out_feats = output_grad->get_shape()[1];
-    int out_h = output_grad->get_shape()[2];
+    int batch_size = output_grad_shape[0];
+    int out_feats = output_grad_shape[1];
+    int out_h = output_grad_shape[2];
 
-    CHECK_EQ(
-        bias_grad->get_shape()[1], out_feats,
-        "conv_backward_bias: mismatch between bias grad size and number of "
-        "output features");
+    CHECK_EQ(bias_grad_shape[1], out_feats,
+             "conv_backward_bias: mismatch between bias grad size and number "
+             "of output features");
 
     utils::set_array_cache(cache, "fold3", {batch_size, out_feats, out_h});
     utils::set_array_cache(cache, "fold2", {batch_size, out_feats});
 
-    mathop::sum(cache["fold3"].get(), output_grad, 3);
-    mathop::sum(cache["fold2"].get(), cache["fold3"].get(), 2);
-    mathop::sum(bias_grad, cache["fold2"].get(), 0, false);
+    ops::sum(cache["fold3"].get(), output_grad, 3);
+    ops::sum(cache["fold2"].get(), cache["fold3"].get(), 2);
+    ops::sum(bias_grad, cache["fold2"].get(), 0, false);
 }
 
 Conv2D::Conv2D(int in_feats, int out_feats, int in_h, int in_w, int pad_h,

@@ -27,7 +27,7 @@ public:
     const Array *get_grad() const { return next->get_grad(); }
 
 private:
-    std::vector<int> in_shape;
+    ShapeType in_shape;
 };
 
 } // namespace nnv2

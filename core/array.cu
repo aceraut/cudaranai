@@ -8,19 +8,19 @@
 
 namespace nnv2 {
 
-Array::Array(const std::vector<int> &_shape) : shape(_shape) {
+Array::Array(const ShapeType &_shape) : shape(_shape) {
     int size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
     vec.resize(size);
 }
 
-Array::Array(const std::vector<int> &_shape, float _value) : shape(_shape) {
+Array::Array(const ShapeType &_shape, float _value) : shape(_shape) {
     int size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
     vec.resize(size, _value);
 }
 
-Array::Array(const std::vector<int> &_shape, const std::vector<float> &_vec)
+Array::Array(const ShapeType &_shape, const VecType &_vec)
     : shape(_shape), vec(_vec.begin(), _vec.end()) {
     check_shape();
 }
@@ -53,12 +53,12 @@ void Array::zero() {
     thrust::fill(vec.begin(), vec.end(), 0);
 }
 
-void Array::reshape(const std::vector<int> &_shape) {
+void Array::reshape(const ShapeType &_shape) {
     shape = _shape;
     check_shape();
 }
 
-void Array::resize(const std::vector<int> &_shape) {
+void Array::resize(const ShapeType &_shape) {
     shape = _shape;
     int size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());

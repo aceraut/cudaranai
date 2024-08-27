@@ -16,14 +16,18 @@ namespace nnv2 {
 // vector with dimensions [1, F_o].
 
 void linear_forward(Array *output, const Array *input, const Array *filter) {
-    CHECK_EQ(input->get_shape()[1], filter->get_shape()[0],
+    const ShapeType &output_shape = output->get_shape();
+    const ShapeType &input_shape = input->get_shape();
+    const ShapeType &filter_shape = filter->get_shape();
+
+    CHECK_EQ(input_shape[1], filter_shape[0],
              "linear_forward: shape mismatch betwen input and filter");
-    CHECK_EQ(output->get_shape()[0], input->get_shape()[0],
+    CHECK_EQ(output_shape[0], input_shape[0],
              "linear_forward: shape mismatch between input and output");
-    CHECK_EQ(output->get_shape()[1], filter->get_shape()[1],
+    CHECK_EQ(output_shape[1], filter_shape[1],
              "linear forward: shape mismatch between filter and output");
 
-    mathop::matmul(output, input, filter);
+    ops::matmul(output, input, filter);
 }
 
 __global__ void linear_forward_bias_kernel(int size, float *output,
@@ -35,12 +39,15 @@ __global__ void linear_forward_bias_kernel(int size, float *output,
 }
 
 void linear_forward_bias(Array *output, const Array *bias) {
-    int batch_size = output->get_shape()[0];
-    int out_feats = output->get_shape()[1];
+    const ShapeType &output_shape = output->get_shape();
+    const ShapeType &bias_shape = bias->get_shape();
 
-    CHECK_EQ(bias->get_shape()[0], 1,
+    int batch_size = output_shape[0];
+    int out_feats = output_shape[1];
+
+    CHECK_EQ(bias_shape[0], 1,
              "linear_forward_bias: bias isn't a column vector");
-    CHECK_EQ(bias->get_shape()[1], out_feats,
+    CHECK_EQ(bias_shape[1], out_feats,
              "linear_forward_bias: mismatch between bias size and number of "
              "output features");
 
@@ -79,25 +86,28 @@ void linear_backward(Array *input_grad, Array *filter_grad, const Array *input,
     // X^T
     utils::set_array_cache(cache, "input_t",
                            {input->get_shape()[1], input->get_shape()[0]});
-    mathop::transpose(cache["input_t"].get(), input);
+    ops::transpose(cache["input_t"].get(), input);
 
     // W^T
     utils::set_array_cache(cache, "filter_t",
                            {filter->get_shape()[1], filter->get_shape()[0]});
-    mathop::transpose(cache["filter_t"].get(), filter);
+    ops::transpose(cache["filter_t"].get(), filter);
 
-    mathop::matmul(filter_grad, cache["input_t"].get(), output_grad);
-    mathop::matmul(input_grad, output_grad, cache["filter_t"].get());
+    ops::matmul(filter_grad, cache["input_t"].get(), output_grad);
+    ops::matmul(input_grad, output_grad, cache["filter_t"].get());
 }
 
 void linear_backward_bias(Array *bias_grad, const Array *output_grad) {
-    CHECK_EQ(bias_grad->get_shape()[0], 1,
+    const ShapeType &output_grad_shape = output_grad->get_shape();
+    const ShapeType &bias_grad_shape = bias_grad->get_shape();
+
+    CHECK_EQ(bias_grad_shape[0], 1,
              "linear_backward_bias: bias grad isn't a column vector");
-    CHECK_EQ(bias_grad->get_shape()[1], output_grad->get_shape()[1],
+    CHECK_EQ(bias_grad_shape[1], output_grad_shape[1],
              "linear_backward_bias: mismatch between bias size and number of "
              "output features");
 
-    mathop::sum(bias_grad, output_grad, 0, false);
+    ops::sum(bias_grad, output_grad, 0, false);
 }
 
 Linear::Linear(int in_feats, int out_feats, const Initializer *init)

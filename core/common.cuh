@@ -19,83 +19,47 @@ constexpr int BLOCK_SIZE = 256;
 constexpr int TILE_DIM = 16;
 constexpr float EPS = 1e-8;
 
-// Check macros
-#define CHECK_EQ(val1, val2, message)                                          \
-    do {                                                                       \
-        if ((val1) != (val2)) {                                                \
-            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
-                      << std::endl;                                            \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+// Type definitions
+using VecType = thrust::device_vector<float>;
+using ShapeType = std::vector<int>;
 
-#define CHECK_COND(condition, message)                                         \
-    do {                                                                       \
-        if (!(condition)) {                                                    \
-            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
-                      << std::endl;                                            \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+class Array;
 
-#define CUDA_CHECK(condition)                                                  \
-    do {                                                                       \
-        cudaError_t error = condition;                                         \
-        CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));               \
-    } while (0)
+// Temporary Array map to cache local Array objects
+using ArrayMap = std::unordered_map<std::string, std::unique_ptr<Array>>;
 
-#define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
+// A pair of weight array and gradient array, used by Optimizer to recalculate
+// the weight.
+using Param = std::pair<Array *, Array *>;
 
-#define RAW_PTR(vec) (thrust::raw_pointer_cast(vec.data()))
-
-// Instead of completely unrolling the loop when parallelizing the computation
-// by assigning each independent iteration to a thread, we use a grid-stride
-// loop in the kernel. This approach allows the kernel to loop over the data 
-// array one grid-size at a time, making it easier to scale the number of
-// threads while maintaining parallelism.
-//
-// Reference:
-// https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
-#define CUDA_GRID_STRIDE_LOOP(i, n)                                            \
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                 \
-         i += gridDim.x * blockDim.x)
-
-// array.cc
-// Array object similar to numpy array
+// Array object similar to numpy array, implemented in array.cu
 class Array {
 public:
-    explicit Array(const std::vector<int> &_shape);
-    explicit Array(const std::vector<int> &_shape, float value);
-    explicit Array(const std::vector<int> &_shape,
-                   const std::vector<float> &_vec);
+    explicit Array(const ShapeType &_shape);
+    explicit Array(const ShapeType &_shape, float value);
+    explicit Array(const ShapeType &_shape, const VecType &_vec);
 
     Array(const Array &other);
     Array(Array &&other);
     Array &operator=(const Array &other);
     Array &operator=(Array &&other);
 
-    void reshape(const std::vector<int> &_shape);
-    void resize(const std::vector<int> &_shape);
+    void reshape(const ShapeType &_shape);
+    void resize(const ShapeType &_shape);
 
     void zero();
 
-    thrust::device_vector<float> &get_vec() { return vec; }
-    const thrust::device_vector<float> &get_vec() const { return vec; }
+    VecType &get_vec() { return vec; }
+    const VecType &get_vec() const { return vec; }
 
-    const std::vector<int> &get_shape() const { return shape; }
+    const ShapeType &get_shape() const { return shape; }
 
 private:
     void check_shape();
 
-    thrust::device_vector<float> vec;
-    std::vector<int> shape;
+    VecType vec;
+    ShapeType shape;
 };
-
-// Temporary Array map to cache local Array objects
-using ArrayMap = std::unordered_map<std::string, std::unique_ptr<Array>>;
-// A pair of weight array and gradient array, used by Optimizer to recalculate
-// the weight.
-using Param = std::pair<Array *, Array *>;
 
 // Helper functions, implemented in utils.cu.
 namespace utils {
@@ -112,8 +76,8 @@ void set_array_cache(ArrayMap &map, std::string key,
 
 } // namespace utils
 
-// Math operations for Array objects, implemented in mathop.cu.
-namespace mathop {
+// Math operations for Array objects, implemented in mathops.cu.
+namespace ops {
 
 // Element-wise addition of 2 arrays
 void add(Array *output, const Array *input1, const Array *input2);
@@ -155,6 +119,51 @@ void sum(Array *output, const Array *input, int axis, bool reduce = true);
 // `reduce` tells the function that the output must have that axis removed.
 void mean(Array *output, const Array *input, int axis, bool reduce = true);
 
-} // namespace mathop
+} // namespace ops
+
+// Macros
+
+// Assertion macros
+#define CHECK_EQ(val1, val2, message)                                          \
+    do {                                                                       \
+        if ((val1) != (val2)) {                                                \
+            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
+                      << std::endl;                                            \
+            exit(1);                                                           \
+        }                                                                      \
+    } while (0)
+
+#define CHECK_COND(statement, message)                                         \
+    do {                                                                       \
+        if (!(statement)) {                                                    \
+            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
+                      << std::endl;                                            \
+            exit(1);                                                           \
+        }                                                                      \
+    } while (0)
+
+// Macro used to check for errors after a CUDA kernel call
+#define CUDA_CHECK(statement)                                                  \
+    do {                                                                       \
+        cudaError_t error = statement;                                         \
+        CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));               \
+    } while (0)
+
+#define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
+
+// Macro used to get raw pointer from Thrust device_vector
+#define RAW_PTR(vec) (thrust::raw_pointer_cast(vec.data()))
+
+// Instead of completely unrolling the loop when parallelizing the computation
+// by assigning each independent iteration to a thread, we use a grid-stride
+// loop in the kernel. This approach allows the kernel to loop over the data
+// array one grid-size at a time, making it easier to scale the number of
+// threads while maintaining parallelism.
+//
+// Reference:
+// https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
+#define CUDA_GRID_STRIDE_LOOP(i, n)                                            \
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                 \
+         i += gridDim.x * blockDim.x)
 
 } // namespace nnv2

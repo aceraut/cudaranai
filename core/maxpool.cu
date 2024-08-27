@@ -61,27 +61,26 @@ __global__ void maxpool_forward_kernel(int size, float *output,
 void maxpool_forward(Array *output, const Array *input, Array *indices,
                      int pad_h, int pad_w, int filter_h, int filter_w,
                      int stride_h, int stride_w) {
-    CHECK_EQ(output->get_shape().size(), 4,
-             "maxpool_forward: output shape error");
-    CHECK_EQ(input->get_shape().size(), 4,
-             "maxpool_forward: input shape error");
+    const ShapeType &output_shape = output->get_shape();
+    const ShapeType &input_shape = input->get_shape();
 
-    int batch_size = input->get_shape()[0];
-    int in_feats = input->get_shape()[1];
+    CHECK_EQ(output_shape.size(), 4, "maxpool_forward: output shape error");
+    CHECK_EQ(input_shape.size(), 4, "maxpool_forward: input shape error");
 
-    CHECK_EQ(output->get_shape()[0], batch_size,
-             "maxpool_forward: batch size error");
-    CHECK_EQ(output->get_shape()[1], in_feats,
-             "maxpool_forward: batch size error");
-    CHECK_EQ(indices->get_vec().size(), output->get_vec().size(),
-             "maxpool_forward: size mismatch beetween indices and output");
+    int batch_size = input_shape[0];
+    int in_feats = input_shape[1];
 
-    int in_h = input->get_shape()[2];
-    int in_w = input->get_shape()[3];
+    CHECK_EQ(output_shape[0], batch_size, "maxpool_forward: batch size error");
+    CHECK_EQ(output_shape[1], in_feats, "maxpool_forward: feature size error");
+    CHECK_EQ(indices->get_shape(), output_shape,
+             "maxpool_forward: shape mismatch beetween indices and output");
+
+    int in_h = input_shape[2];
+    int in_w = input_shape[3];
     int in_stride = in_h * in_w;
 
-    int out_h = output->get_shape()[2];
-    int out_w = output->get_shape()[3];
+    int out_h = output_shape[2];
+    int out_w = output_shape[3];
     int size = out_h * out_w; // is also out_stride
 
     float *output_raw = RAW_PTR(output->get_vec());
@@ -150,28 +149,32 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
 void maxpool_backward(Array *input_grad, const Array *output_grad,
                       const Array *indices, int pad_h, int pad_w, int filter_h,
                       int filter_w, int stride_h, int stride_w) {
-    CHECK_EQ(input_grad->get_shape().size(), 4,
+    const ShapeType &input_grad_shape = input_grad->get_shape();
+    const ShapeType &output_grad_shape = output_grad->get_shape();
+
+    CHECK_EQ(input_grad_shape.size(), 4,
              "maxpool_backward: input gradient shape error");
-    CHECK_EQ(output_grad->get_shape().size(), 4,
+    CHECK_EQ(output_grad_shape.size(), 4,
              "maxpool_backward: output gradient shape error");
 
-    int batch_size = input_grad->get_shape()[0];
-    int in_feats = input_grad->get_shape()[1];
+    int batch_size = input_grad_shape[0];
+    int in_feats = input_grad_shape[1];
 
-    CHECK_EQ(output_grad->get_shape()[0], batch_size,
+    CHECK_EQ(output_grad_shape[0], batch_size,
              "maxpool_backward: batch size error");
-    CHECK_EQ(output_grad->get_shape()[1], in_feats,
-             "maxpool_backward: batch size error");
+    CHECK_EQ(output_grad_shape[1], in_feats,
+             "maxpool_backward: feature size error");
 
-    CHECK_EQ(indices->get_vec().size(), output_grad->get_vec().size(),
-             "maxpool_backward: size mismatch between indices and output grad");
+    CHECK_EQ(indices->get_shape(), output_grad_shape,
+             "maxpool_backward: shape mismatch between indices and output "
+             "grad");
 
-    int in_h = input_grad->get_shape()[2];
-    int in_w = input_grad->get_shape()[3];
+    int in_h = input_grad_shape[2];
+    int in_w = input_grad_shape[3];
     int size = in_h * in_w; // is also in_stride
 
-    int out_h = output_grad->get_shape()[2];
-    int out_w = output_grad->get_shape()[3];
+    int out_h = output_grad_shape[2];
+    int out_w = output_grad_shape[3];
     int out_stride = out_h * out_w;
 
     float *input_grad_raw = RAW_PTR(input_grad->get_vec());
@@ -196,10 +199,11 @@ MaxPool2D::MaxPool2D(int pad_h, int pad_w, int kernel_h, int kernel_w,
 void MaxPool2D::forward() {
     const Array *input = prev->get_output();
 
-    int batch_size = input->get_shape()[0];
-    int in_feats = input->get_shape()[1];
-    int in_h = input->get_shape()[2];
-    int in_w = input->get_shape()[3];
+    const ShapeType &input_shape = input->get_shape();
+    int batch_size = input_shape[0];
+    int in_feats = input_shape[1];
+    int in_h = input_shape[2];
+    int in_w = input_shape[3];
 
     int out_h = (in_h + 2 * pad_h - kernel_h) / stride_h + 1;
     int out_w = (in_w + 2 * pad_w - kernel_w) / stride_w + 1;

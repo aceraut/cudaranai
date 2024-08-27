@@ -11,14 +11,16 @@ namespace nnv2 {
 // Stochastic gradient descent (SGD) with momentum
 void SGD::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
-        CHECK_EQ(weight->get_shape(), grad->get_shape(),
+        const ShapeType &grad_shape = grad->get_shape();
+
+        CHECK_EQ(weight->get_shape(), grad_shape,
                  "shape mismatch between weight and gradient");
 
         weights.push_back(weight);
         grads.push_back(grad);
 
         if (momentum != 0) {
-            velocities.push_back(std::make_unique<Array>(grad->get_shape(), 0));
+            velocities.push_back(std::make_unique<Array>(grad_shape, 0));
         }
     }
 }
@@ -83,12 +85,14 @@ void SGD::update_parameters() {
 // Root-mean-squared propagation (RMSProp)
 void RMSProp::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
-        CHECK_EQ(weight->get_shape(), grad->get_shape(),
+        const ShapeType &grad_shape = grad->get_shape();
+
+        CHECK_EQ(weight->get_shape(), grad_shape,
                  "shape mismatch between weight and gradient");
 
         weights.push_back(weight);
         grads.push_back(grad);
-        mean_sqr_grads.push_back(std::make_unique<Array>(grad->get_shape(), 0));
+        mean_sqr_grads.push_back(std::make_unique<Array>(grad_shape, 0));
     }
 }
 
@@ -128,13 +132,15 @@ void RMSProp::update_parameters() {
 // Adaptive moment estimation (Adam)
 void Adam::add_parameters(std::vector<Param> params) {
     for (const auto &[weight, grad] : params) {
-        CHECK_EQ(weight->get_shape(), grad->get_shape(),
+        const ShapeType &grad_shape = grad->get_shape();
+
+        CHECK_EQ(weight->get_shape(), grad_shape,
                  "shape mismatch between weight and gradient");
 
         weights.push_back(weight);
         grads.push_back(grad);
-        mean_grads.push_back(std::make_unique<Array>(grad->get_shape(), 0));
-        mean_sqr_grads.push_back(std::make_unique<Array>(grad->get_shape(), 0));
+        mean_grads.push_back(std::make_unique<Array>(grad_shape, 0));
+        mean_sqr_grads.push_back(std::make_unique<Array>(grad_shape, 0));
     }
 }
 
