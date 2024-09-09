@@ -29,10 +29,10 @@ initialization, etc.
 
 | Classifier | Preprocessing | Optimizer | Run time | Max. test accuracy | Final test accuracy |
 | --- | --- | --- | --- | --- | --- |
-| 2 Conv + 1 FC (~11k params) + LogSoftmax + NLLLoss | Standardization | Adam | 70 sec | 0.9078 | 0.9071 |
-| 2 Conv + 3 FC (~62k params) + Softmax + CrossEntropyLoss | Standardization | SGD | 90 sec | 0.9071 | 0.9016 |
-| 2 Conv + 3 FC (~62k params) + LogSoftmax + NLLLoss | Standardization | RMSProp | 65 sec | 0.9024 | 0.8891 |
-| 3 Conv + 2 FC (~193k params) + LogSoftmax + NLLLoss | Scaling | RMSProp | 152 sec | 0.9074 | 0.9031 |
+| 2 Conv + 1 FC (~11k params) + LogSoftmax + NLLLoss | Standardization | Adam | 69 sec | 0.9072 | 0.9054 |
+| 2 Conv + 3 FC (~62k params) + Softmax + CrossEntropyLoss | Standardization | SGD | 87 sec | 0.9093 | 0.9057 |
+| 2 Conv + 3 FC (~62k params) + LogSoftmax + NLLLoss | Standardization | RMSProp | 62 sec | 0.9009 | 0.8926 |
+| 3 Conv + 2 FC (~193k params) + LogSoftmax + NLLLoss | Scaling | RMSProp | 149 sec | 0.9043 | 0.9022 |
 
 Refer to this [notebook](https://colab.research.google.com/drive/1L7bxc2k-IakPnZemFQqPm9VdVAtycabU?usp=sharing)
 for full demonstration of the training process.
