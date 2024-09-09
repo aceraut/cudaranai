@@ -48,7 +48,6 @@ void ReLU::forward() {
 void ReLU::backward() {
     const Array *input = prev->get_output();
     Array *output_grad = next->get_grad();
-
     relu_backward(output_grad, output_grad, input);
 }
 
@@ -91,7 +90,6 @@ void Sigmoid::forward() {
 void Sigmoid::backward() {
     const Array *input = prev->get_output();
     Array *output_grad = next->get_grad();
-
     sigmoid_backward(output_grad, output_grad, input);
 }
 
@@ -133,7 +131,6 @@ void Tanh::forward() {
 void Tanh::backward() {
     const Array *input = prev->get_output();
     Array *output_grad = next->get_grad();
-
     tanh_backward(output_grad, output_grad, input);
 }
 
@@ -181,11 +178,10 @@ void softmax_forward(Array *output, const Array *input) {
     int batch_size = input_shape[0];
     int batch_stride = std::accumulate(
         input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
+    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
-
-    int grid_size = ceil((float)batch_size / BLOCK_SIZE);
 
     softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(batch_size, output_raw,
                                                       input_raw, batch_stride);
@@ -195,7 +191,6 @@ void softmax_forward(Array *output, const Array *input) {
 void Softmax::forward() {
     const Array *input = prev->get_output();
     utils::set_array_ptr(output, input->get_shape());
-
     softmax_forward(output.get(), input);
 }
 
@@ -251,15 +246,13 @@ void log_softmax_forward(Array *output, const Array *input) {
     int batch_size = input_shape[0];
     int batch_stride = std::accumulate(
         input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
+    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
 
     const float *input_raw = RAW_PTR(input->get_vec());
     float *output_raw = RAW_PTR(output->get_vec());
 
-    int grid_size = ceil((float)batch_size / BLOCK_SIZE);
-
     log_softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
         batch_size, output_raw, input_raw, batch_stride);
-
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -318,23 +311,20 @@ void log_softmax_backward(Array *input_grad, const Array *output_grad,
     int batch_size = input_shape[0];
     int batch_stride = std::accumulate(
         input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
+    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
 
     float *input_grad_raw = RAW_PTR(input_grad->get_vec());
     const float *output_grad_raw = RAW_PTR(output_grad->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
 
-    int grid_size = ceil((float)batch_size / BLOCK_SIZE);
-
     log_softmax_backward_kernel<<<grid_size, BLOCK_SIZE>>>(
         batch_size, input_grad_raw, output_grad_raw, input_raw, batch_stride);
-
     CUDA_POST_KERNEL_CHECK;
 }
 
 void LogSoftmax::forward() {
     const Array *input = prev->get_output();
     utils::set_array_ptr(output, input->get_shape());
-
     log_softmax_forward(output.get(), input);
 }
 
@@ -342,7 +332,6 @@ void LogSoftmax::backward() {
     const Array *input = prev->get_output();
     const Array *output_grad = next->get_grad();
     utils::set_array_ptr(grad, input->get_shape());
-
     log_softmax_backward(grad.get(), output_grad, input);
 }
 

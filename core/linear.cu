@@ -51,11 +51,11 @@ void linear_forward_bias(Array *output, const Array *bias) {
              "linear_forward_bias: mismatch between bias size and number of "
              "output features");
 
+    int size = batch_size * out_feats;
+    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+
     float *output_raw = RAW_PTR(output->get_vec());
     const float *bias_raw = RAW_PTR(bias->get_vec());
-
-    int size = batch_size * out_feats;
-    int grid_size = ceil(float(size) / BLOCK_SIZE);
 
     linear_forward_bias_kernel<<<grid_size, BLOCK_SIZE>>>(size, output_raw,
                                                           bias_raw, out_feats);

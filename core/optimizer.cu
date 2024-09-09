@@ -36,7 +36,7 @@ __global__ void sgd_kernel(int size, float *weight, const float *grad, float lr,
 static void sgd_single(Array *weight, const Array *grad, float lr,
                        float decay) {
     int size = weight->get_vec().size();
-    int grid_size = ceil((float)size / BLOCK_SIZE);
+    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
 
     float *weight_raw = RAW_PTR(weight->get_vec());
     const float *grad_raw = RAW_PTR(grad->get_vec());
@@ -59,7 +59,7 @@ __global__ void sgd_momentum_kernel(int size, float *weight, const float *grad,
 static void sgd_single(Array *weight, const Array *grad, Array *velocity,
                        float lr, float decay, float momentum) {
     int size = weight->get_vec().size();
-    int grid_size = ceil((float)size / BLOCK_SIZE);
+    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
 
     float *weight_raw = RAW_PTR(weight->get_vec());
     float *velocity_raw = RAW_PTR(velocity->get_vec());
@@ -110,7 +110,7 @@ static void rmsprop_single(Array *weight, const Array *grad,
                            Array *mean_sqr_grad, float lr, float decay,
                            float beta) {
     int size = weight->get_vec().size();
-    int grid_size = ceil((float)size / BLOCK_SIZE);
+    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
 
     float *weight_raw = RAW_PTR(weight->get_vec());
     float *mean_sqr_grad_raw = RAW_PTR(mean_sqr_grad->get_vec());
@@ -165,7 +165,7 @@ static void adam_single(Array *weight, const Array *grad, Array *mean_grad,
                         float beta1, float beta2, float beta1_pow,
                         float beta2_pow) {
     int size = weight->get_vec().size();
-    int grid_size = ceil((float)size / BLOCK_SIZE);
+    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
 
     float *weight_raw = RAW_PTR(weight->get_vec());
     float *mean_grad_raw = RAW_PTR(mean_grad->get_vec());
@@ -175,7 +175,6 @@ static void adam_single(Array *weight, const Array *grad, Array *mean_grad,
     adam_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, weight_raw, grad_raw, mean_grad_raw, mean_sqr_grad_raw, lr, decay,
         beta1, beta2, beta1_pow, beta2_pow);
-
     CUDA_POST_KERNEL_CHECK;
 }
 

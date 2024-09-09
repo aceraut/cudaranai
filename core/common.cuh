@@ -74,6 +74,9 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 void set_array_cache(ArrayMap &map, std::string key,
                      const std::vector<int> &shape);
 
+// Calculate rounded up decimal quotient of two integers
+int quotient_ceil(int a, int b);
+
 } // namespace utils
 
 // Math operations for Array objects, implemented in mathops.cu.

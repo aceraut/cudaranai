@@ -81,21 +81,21 @@ void im2col(const Array *im, Array *col, int pad_h, int pad_w, int filter_h,
     int im_w = im_shape[3];
 
     // Launch kernels
-    const float *im_raw = RAW_PTR(im->get_vec());
-    float *col_raw = RAW_PTR(col->get_vec());
-
     int out_h = (im_h + 2 * pad_h - filter_h) / stride_h + 1;
     int out_w = (im_w + 2 * pad_w - filter_w) / stride_w + 1;
     int im_stride = im_h * im_w;
     int col_stride = filter_h * filter_w * out_h * out_w;
 
     int size = out_h * out_w;
-    dim3 grid_dim(ceil((float)size / BLOCK_SIZE), batch_size * im_feats, 1);
+    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
+                  batch_size * im_feats);
+
+    const float *im_raw = RAW_PTR(im->get_vec());
+    float *col_raw = RAW_PTR(col->get_vec());
 
     im2col_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, im_raw, col_raw, im_h, im_w, pad_h, pad_w, filter_h, filter_w,
         stride_h, stride_w, out_h, out_w, im_stride, col_stride);
-
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -165,11 +165,10 @@ void conv_forward_bias(Array *output, const Array *bias) {
              "conv_forward_bias: mismatch between bias size and number of "
              "output features");
 
+    int size = output->get_vec().size();
+    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
     float *output_raw = RAW_PTR(output->get_vec());
     const float *bias_raw = RAW_PTR(bias->get_vec());
-
-    int size = output->get_vec().size();
-    int grid_size = ceil((float)size / BLOCK_SIZE);
 
     conv_forward_bias_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, output_raw, bias_raw, out_h * out_w, out_feats);
@@ -219,7 +218,6 @@ __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
         int out_y_end = fminf(out_w, in_y / stride_w + 1);
 
         float value = 0;
-
         for (int out_x = out_x_start; out_x < out_x_end; out_x++) {
             for (int out_y = out_y_start; out_y < out_y_end; out_y++) {
                 // Locate the filter position that overlaps this pixel
@@ -233,7 +231,6 @@ __global__ void col2im_kernel(int size, float *im, const float *col, int in_h,
                 value += col[col_idx];
             }
         }
-
         im[idx] = value;
     }
 }
@@ -248,21 +245,21 @@ void col2im(const Array *col, Array *im, int pad_h, int pad_w, int filter_h,
     int im_w = im_shape[3];
 
     // Launch kernels
-    float *im_raw = RAW_PTR(im->get_vec());
-    const float *col_raw = RAW_PTR(col->get_vec());
-
     int out_h = (im_h + 2 * pad_h - filter_h) / stride_h + 1;
     int out_w = (im_w + 2 * pad_w - filter_w) / stride_w + 1;
     int im_stride = im_h * im_w;
     int col_stride = filter_h * filter_w * out_h * out_w;
 
     int size = im_h * im_w;
-    dim3 grid_dim(ceil((float)size / BLOCK_SIZE), batch_size * im_feats, 1);
+    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
+                  batch_size * im_feats);
+
+    float *im_raw = RAW_PTR(im->get_vec());
+    const float *col_raw = RAW_PTR(col->get_vec());
 
     col2im_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, im_raw, col_raw, im_h, im_w, pad_h, pad_w, filter_h, filter_w,
         stride_h, stride_w, out_h, out_w, im_stride, col_stride);
-
     CUDA_POST_KERNEL_CHECK;
 }
 

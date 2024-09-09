@@ -70,7 +70,7 @@ void Array::resize(const ShapeType &_shape) {
 void Array::check_shape() {
     int size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
-    CHECK_EQ(size, vec.size(), "mismatch between array shape with size");
+    CHECK_EQ(size, vec.size(), "Array: mismatch between array shape with size");
 }
 
 } // namespace nnv2

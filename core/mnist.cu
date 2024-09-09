@@ -31,7 +31,6 @@ Mnist::Mnist(std::string data_path, bool standard, bool rescaled)
         rescale_images(train_images);
         rescale_images(test_images);
     }
-
     if (standard) {
         standardize_images(train_images);
         standardize_images(test_images);
@@ -44,7 +43,6 @@ static unsigned reverse_int(unsigned i) {
     ch2 = (i >> 8) & 255;
     ch3 = (i >> 16) & 255;
     ch4 = (i >> 24) & 255;
-
     return ((unsigned)ch1 << 24) + ((unsigned)ch2 << 16) +
            ((unsigned)ch3 << 8) + (unsigned)ch4;
 }

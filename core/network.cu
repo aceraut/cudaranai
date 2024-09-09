@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cfloat>
-#include <iomanip>
 #include <iostream>
 #include <utility>
 
@@ -126,20 +125,20 @@ __global__ void top1_accuracy_kernel(int size, int *is_accurate,
         int pred_label = -1;
         int y_label = -1;
 
+        // Find label with the highest probability in the output
         for (int i = 0; i < label_stride; i++) {
             if (max_val < preds[i]) {
                 max_val = preds[i];
                 pred_label = i;
             }
         }
-
+        // Find actual label
         for (int i = 0; i < label_stride; i++) {
             if (y[i] == 1) {
                 y_label = i;
                 break;
             }
         }
-
         is_accurate[idx] = (pred_label == y_label ? 1 : 0);
     }
 }
@@ -148,13 +147,12 @@ std::pair<int, int> Network::top1_accuracy(const Array *preds, const Array *y) {
     int batch_size = preds->get_shape()[0];
     int label_stride = preds->get_shape()[1];
 
-    is_accurate.resize(batch_size);
+    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
 
+    is_accurate.resize(batch_size);
     int *is_accurate_raw = RAW_PTR(is_accurate);
     const float *preds_raw = RAW_PTR(preds->get_vec());
     const float *y_raw = RAW_PTR(y->get_vec());
-
-    int grid_size = ceil((float)batch_size / BLOCK_SIZE);
 
     top1_accuracy_kernel<<<grid_size, BLOCK_SIZE>>>(
         batch_size, is_accurate_raw, preds_raw, y_raw, label_stride);

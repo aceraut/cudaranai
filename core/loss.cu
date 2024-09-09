@@ -23,7 +23,7 @@ void cross_entropy_loss(Array *output, const Array *input, const Array *y,
     utils::set_array_cache(cache, "loss_sparse", input_shape);
     ops::multiply(cache["loss_sparse"].get(), cache["log_pred"].get(), y);
 
-    // Reduce the distribution matrix to one-dimensional array
+    // Reduce the distribution matrix on each batch element
     utils::set_array_cache(cache, "loss", {input_shape[0]});
     ops::sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
 
@@ -75,11 +75,11 @@ void nll_loss(Array *output, const Array *input, const Array *y,
     utils::set_array_cache(cache, "loss_sparse", input_shape);
     ops::multiply(cache["loss_sparse"].get(), input, y);
 
-    // reduce the distribution matrix to one-dimensional array
+    // Reduce the distribution matrix on each batch element
     utils::set_array_cache(cache, "loss", {input_shape[0]});
     ops::sum(cache["loss"].get(), cache["loss_sparse"].get(), 1);
 
-    // calculate average log loss value of a batch
+    // Calculate average log loss value of a batch
     ops::mean(output, cache["loss"].get(), 0, false);
     output->get_vec()[0] *= -1.0;
 }

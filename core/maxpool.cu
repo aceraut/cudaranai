@@ -40,6 +40,7 @@ __global__ void maxpool_forward_kernel(int size, float *output,
         in_x_start = fmaxf(in_x_start, 0);
         in_y_start = fmaxf(in_y_start, 0);
 
+        // Loop over the local patch and select the pixel with largest value
         float max_val = -FLT_MAX;
         float max_idx = -1;
 
@@ -52,7 +53,6 @@ __global__ void maxpool_forward_kernel(int size, float *output,
                 }
             }
         }
-
         output[idx] = max_val;
         max_indices[idx] = max_idx;
     }
@@ -78,21 +78,19 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     int in_h = input_shape[2];
     int in_w = input_shape[3];
     int in_stride = in_h * in_w;
-
     int out_h = output_shape[2];
     int out_w = output_shape[3];
     int size = out_h * out_w; // is also out_stride
+    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
+                  batch_size * in_feats);
 
     float *output_raw = RAW_PTR(output->get_vec());
     float *indices_raw = RAW_PTR(indices->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
 
-    dim3 grid_dim(ceil((float)size / BLOCK_SIZE), batch_size * in_feats, 1);
-
     maxpool_forward_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, output_raw, indices_raw, input_raw, in_h, in_w, pad_h, pad_w,
         filter_h, filter_w, stride_h, stride_w, out_h, out_w, in_stride, size);
-
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -141,7 +139,6 @@ maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
                 }
             }
         }
-
         input_grad[idx] = value;
     }
 }
@@ -164,7 +161,6 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
              "maxpool_backward: batch size error");
     CHECK_EQ(output_grad_shape[1], in_feats,
              "maxpool_backward: feature size error");
-
     CHECK_EQ(indices->get_shape(), output_grad_shape,
              "maxpool_backward: shape mismatch between indices and output "
              "grad");
@@ -172,22 +168,20 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
     int in_h = input_grad_shape[2];
     int in_w = input_grad_shape[3];
     int size = in_h * in_w; // is also in_stride
-
     int out_h = output_grad_shape[2];
     int out_w = output_grad_shape[3];
     int out_stride = out_h * out_w;
+    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
+                  batch_size * in_feats);
 
     float *input_grad_raw = RAW_PTR(input_grad->get_vec());
     const float *output_grad_raw = RAW_PTR(output_grad->get_vec());
     const float *indices_raw = RAW_PTR(indices->get_vec());
 
-    dim3 grid_dim(ceil((float)size / BLOCK_SIZE), batch_size * in_feats, 1);
-
     maxpool_backward_kernel<<<grid_dim, BLOCK_SIZE>>>(
         size, input_grad_raw, output_grad_raw, indices_raw, in_h, in_w, pad_h,
         pad_w, filter_h, filter_w, stride_h, stride_w, out_h, out_w, size,
         out_stride);
-
     CUDA_POST_KERNEL_CHECK;
 }
 
@@ -198,13 +192,12 @@ MaxPool2D::MaxPool2D(int pad_h, int pad_w, int kernel_h, int kernel_w,
 
 void MaxPool2D::forward() {
     const Array *input = prev->get_output();
-
     const ShapeType &input_shape = input->get_shape();
+
     int batch_size = input_shape[0];
     int in_feats = input_shape[1];
     int in_h = input_shape[2];
     int in_w = input_shape[3];
-
     int out_h = (in_h + 2 * pad_h - kernel_h) / stride_h + 1;
     int out_w = (in_w + 2 * pad_w - kernel_w) / stride_w + 1;
 

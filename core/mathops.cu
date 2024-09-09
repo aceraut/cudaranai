@@ -37,8 +37,9 @@ __global__ void matmul_kernel(float *output, const float *input1,
 
     // Loop over input tiles to calculate the dot value
     float value = 0;
+    int tile_count = (k + TILE_DIM - 1) / TILE_DIM;
 
-    for (int i = 0; i < (int)ceil((float)k / TILE_DIM); i++) {
+    for (int i = 0; i < tile_count; i++) {
         // Load input tiles to shared memory
         if (row < m && i * TILE_DIM + tx < k) {
             input1_tile[ty][tx] = input1[row * k + i * TILE_DIM + tx];
@@ -90,12 +91,11 @@ __global__ void sum_kernel(int size, float *output, const float *input,
                            int axis_size, int stride) {
     CUDA_GRID_STRIDE_LOOP(idx, size) {
         int base = (idx / stride) * axis_size * stride + (idx % stride);
-        float value = 0;
 
+        float value = 0;
         for (int i = 0; i < axis_size; i++) {
             value += input[base + i * stride];
         }
-
         output[idx] = value;
     }
 }
@@ -104,12 +104,11 @@ __global__ void mean_kernel(int size, float *output, const float *input,
                             int axis_size, int stride) {
     CUDA_GRID_STRIDE_LOOP(idx, size) {
         int base = (idx / stride) * axis_size * stride + (idx % stride);
-        float value = 0;
 
+        float value = 0;
         for (int i = 0; i < axis_size; i++) {
             value += input[base + i * stride];
         }
-
         output[idx] = value / axis_size;
     }
 }
@@ -280,8 +279,9 @@ void matmul(Array *output, const Array *input1, const Array *input2,
     CHECK_EQ(n, output_w,
              "ops::matmul: shape mismatch between second input and output");
 
-    dim3 grid_dim(ceil((float)n / TILE_DIM), ceil((float)m / TILE_DIM),
-                  batch_size);
+    // Launch kernels
+    dim3 grid_dim(utils::quotient_ceil(n, TILE_DIM),
+                  utils::quotient_ceil(m, TILE_DIM), batch_size);
     dim3 block_dim(TILE_DIM, TILE_DIM);
 
     float *output_raw = RAW_PTR(output->get_vec());
@@ -311,7 +311,6 @@ void transpose(Array *output, const Array *input) {
                         std::multiplies<int>());
     int bs_input = std::accumulate(input_shape.begin(), input_shape.end() - 2,
                                    1, std::multiplies<int>());
-
     CHECK_EQ(batch_size, bs_input, "ops::transpose: batch size mismatch");
 
     // Validate matrix dimension
@@ -326,12 +325,12 @@ void transpose(Array *output, const Array *input) {
              "ops::transpose: shape mismatch between input and output");
 
     // Launch kernels
+    dim3 grid_dim(utils::quotient_ceil(n, TILE_DIM),
+                  utils::quotient_ceil(m, TILE_DIM), batch_size);
+    dim3 block_dim(TILE_DIM, TILE_DIM);
+
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
-
-    dim3 grid_dim(ceil((float)n / TILE_DIM), ceil((float)m / TILE_DIM),
-                  batch_size);
-    dim3 block_dim(TILE_DIM, TILE_DIM);
 
     transpose_kernel<<<grid_dim, block_dim>>>(output_raw, input_raw, m, n);
     CUDA_POST_KERNEL_CHECK;
@@ -356,19 +355,17 @@ void sum(Array *output, const Array *input, int axis, bool reduce) {
     } else {
         reduced_shape[axis] = 1;
     }
-
     CHECK_EQ(reduced_shape, output_shape, "ops::sum: shape error at output");
 
     // Launch kernels
-    float *output_raw = RAW_PTR(output->get_vec());
-    const float *input_raw = RAW_PTR(input->get_vec());
-
     int output_size = output->get_vec().size();
     int axis_size = input_shape[axis];
     int stride = std::accumulate(input_shape.begin() + axis + 1,
                                  input_shape.end(), 1, std::multiplies<int>());
+    int grid_size = utils::quotient_ceil(output_size, BLOCK_SIZE);
 
-    int grid_size = ceil((float)output_size / BLOCK_SIZE);
+    float *output_raw = RAW_PTR(output->get_vec());
+    const float *input_raw = RAW_PTR(input->get_vec());
 
     sum_kernel<<<grid_size, BLOCK_SIZE>>>(output_size, output_raw, input_raw,
                                           axis_size, stride);
@@ -394,19 +391,17 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
     } else {
         reduced_shape[axis] = 1;
     }
-
     CHECK_EQ(reduced_shape, output_shape, "ops::mean: shape error at output");
 
     // Launch kernels
-    float *output_raw = RAW_PTR(output->get_vec());
-    const float *input_raw = RAW_PTR(input->get_vec());
-
     int output_size = output->get_vec().size();
     int axis_size = input_shape[axis];
     int stride = std::accumulate(input_shape.begin() + axis + 1,
                                  input_shape.end(), 1, std::multiplies<int>());
+    int grid_size = utils::quotient_ceil(output_size, BLOCK_SIZE);
 
-    int grid_size = ceil((float)output_size / BLOCK_SIZE);
+    float *output_raw = RAW_PTR(output->get_vec());
+    const float *input_raw = RAW_PTR(input->get_vec());
 
     mean_kernel<<<grid_size, BLOCK_SIZE>>>(output_size, output_raw, input_raw,
                                            axis_size, stride);
