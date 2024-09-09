@@ -5,8 +5,8 @@ option(BUILD_TESTS "build test program to test the functions" OFF)
 
 # Set the directories for the core, tests, and demos
 set(CORE_DIR ${CMAKE_SOURCE_DIR}/core)
-set(TESTS_DIR ${CMAKE_SOURCE_DIR}/tests)
-set(DEMOS_DIR ${CMAKE_SOURCE_DIR}/demos)
+set(TEST_DIR ${CMAKE_SOURCE_DIR}/test)
+set(DEMO_DIR ${CMAKE_SOURCE_DIR}/demo)
 
 # Collect all CUDA source and header files in the core directory
 file(GLOB CORE_SOURCES ${CORE_DIR}/*.cu)
@@ -21,7 +21,7 @@ target_compile_options(core_lib PRIVATE
 
 if(BUILD_TESTS)
     # Collect all test files in the tests directory
-    file(GLOB TEST_SOURCES ${TESTS_DIR}/*.cu)
+    file(GLOB TEST_SOURCES ${TEST_DIR}/*.cu)
 
     # Add test executables
     foreach(test_source ${TEST_SOURCES})
@@ -32,7 +32,7 @@ if(BUILD_TESTS)
 endif()
 
 # Collect all demo files in the demos directory
-file(GLOB DEMO_SOURCES ${DEMOS_DIR}/*.cu)
+file(GLOB DEMO_SOURCES ${DEMO_DIR}/*.cu)
 
 # Add demo executables
 foreach(demo_source ${DEMO_SOURCES})

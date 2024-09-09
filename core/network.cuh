@@ -27,7 +27,7 @@ private:
     // A single run of training classifiers.
     void train_epoch();
 
-    // Calculate top1 accuracy of prediction compared to actual result y
+    // Calculates top1 accuracy of prediction compared to actual result y
     std::pair<int, int> top1_accuracy(const Array *preds, const Array *y);
 
     std::vector<std::unique_ptr<Layer>> layers;

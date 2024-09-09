@@ -28,7 +28,7 @@ void set_array_cache(ArrayMap &map, std::string key,
     set_array_ptr(map[key], shape);
 }
 
-// Calculate rounded up decimal quotient of two integers
+// Calculates rounded up decimal quotient of two integers
 int quotient_ceil(int a, int b) {
     return a / b + (int)(a % b != 0);
 }

@@ -111,8 +111,9 @@ void Network::test() {
               << std::endl;
 }
 
-// Calculate the accuracy where the label with the highest probability
-// is the correct label
+// Determines the accuracy of the batch by comparing the labels with the highest
+// probability in the output batch and the actual labels.
+// Returns number of accurate labels and total number of labels in a batch.
 // TODO: optimize max reduce op in the kernel (and other similar reduce ops)
 __global__ void top1_accuracy_kernel(int size, int *is_accurate,
                                      const float *preds, const float *y,
