@@ -11,6 +11,7 @@
 #include "activation.cuh"
 #include "conv.cuh"
 #include "dataloader.cuh"
+#include "dropout.cuh"
 #include "flatten.cuh"
 #include "linear.cuh"
 #include "loss.cuh"

@@ -35,9 +35,12 @@ public:
     virtual void forward() {
         throw std::runtime_error("Layer::forward: not implemented");
     }
+
     virtual void backward() {
         throw std::runtime_error("Layer::backward: not implemented");
     }
+
+    virtual void forward_test() { forward(); }
 
 protected:
     Layer *prev;

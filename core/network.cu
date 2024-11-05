@@ -93,7 +93,7 @@ void Network::test() {
 
         // Perform forward phase to calculate prediction
         for (int i = 0; i < layers.size(); i++) {
-            layers[i]->forward();
+            layers[i]->forward_test();
         }
 
         // Calculate loss & accuracy of prediction compared to actual result
