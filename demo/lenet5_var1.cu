@@ -23,14 +23,19 @@ int main(int argc, char **argv) {
     net.add(new Conv2D(1, 6, 28, 28, 2, 2, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
     net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
+
     net.add(new Conv2D(6, 16, 14, 14, 0, 0, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
     net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
+
     net.add(new Flatten);
+
     net.add(new Linear(400, 120, init.get()));
     net.add(new ReLU);
+
     net.add(new Linear(120, 84, init.get()));
     net.add(new ReLU);
+
     net.add(new Linear(84, 10, init.get()));
     net.add(new LogSoftmax);
 

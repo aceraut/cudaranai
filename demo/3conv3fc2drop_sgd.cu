@@ -1,9 +1,4 @@
-// LeNet-5 architecture example
-// The original description uses Sigmoid as the hidden activation layer but it's
-// not learning quite well so I opt for ReLU
-
-// Epoch: 30, Batch size: 32
-// Init: LeCun Uniform, Loss: Softmax-CrossEntropy, Optimizer: SGD
+// https://github.com/umbertogriffo/Fashion-mnist-cnn-keras/blob/master/src/convolutional/fashion_mnist_cnn.py
 
 #include "nnv2.cuh"
 
@@ -22,36 +17,46 @@ int main(int argc, char **argv) {
     std::string data_path = argv[1];
 
     Network net;
-    std::unique_ptr<Initializer> init = std::make_unique<LecunUniform>();
+    std::unique_ptr<Initializer> init = std::make_unique<XavierUniform>();
 
-    net.add(new Conv2D(1, 6, 28, 28, 2, 2, 5, 5, 1, 1, init.get()));
+    net.add(new Conv2D(1, 32, 28, 28, 2, 2, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
     net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
 
-    net.add(new Conv2D(6, 16, 14, 14, 0, 0, 5, 5, 1, 1, init.get()));
+    net.add(new Conv2D(32, 64, 14, 14, 2, 2, 5, 5, 1, 1, init.get()));
+    net.add(new ReLU);
+    net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
+
+    net.add(new Conv2D(64, 128, 7, 7, 1, 1, 1, 1, 1, 1, init.get()));
     net.add(new ReLU);
     net.add(new MaxPool2D(0, 0, 2, 2, 2, 2));
 
     net.add(new Flatten);
 
-    net.add(new Linear(400, 120, init.get()));
+    net.add(new Linear(128 * 4 * 4, 1024, init.get()));
     net.add(new ReLU);
+    net.add(new Dropout(0.5));
 
-    net.add(new Linear(120, 84, init.get()));
+    net.add(new Linear(1024, 512, init.get()));
     net.add(new ReLU);
+    net.add(new Dropout(0.5));
 
-    net.add(new Linear(84, 10, init.get()));
+    net.add(new Linear(512, 10, init.get()));
     net.add(new Softmax);
 
     std::cout << "Network setup complete" << std::endl;
 
+    int epochs = 30;
+    float lr = 0.01;
+    float decay = lr / 150;
+
     std::unique_ptr<DataLoader> loader =
         std::make_unique<DataLoader>(new Mnist(data_path), 32);
     std::unique_ptr<Loss> loss = std::make_unique<CrossEntropyLoss>();
-    std::unique_ptr<Optimizer> optim = std::make_unique<SGD>(0.001);
+    std::unique_ptr<Optimizer> optim = std::make_unique<SGD>(lr, decay, 0.9);
 
     net.init(loader.get(), loss.get(), optim.get());
-    net.train(30, true);
+    net.train(epochs, true);
 
     return 0;
 }
