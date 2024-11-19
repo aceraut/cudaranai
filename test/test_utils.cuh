@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <iostream>
-#include <math>
+#include <cmath>
 #include <vector>
 
 #include <thrust/copy.h>

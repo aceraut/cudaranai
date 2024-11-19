@@ -22,7 +22,7 @@ __global__ void dropout_forward_kernel(int size, float *output,
 }
 
 void dropout_forward(Array *output, const Array *input, float drop_rate,
-                     thrust::device_vector<char> mask) {
+                     thrust::device_vector<char> &mask) {
     const ShapeType &output_shape = output->get_shape();
     const ShapeType &input_shape = input->get_shape();
 
@@ -54,7 +54,8 @@ __global__ void dropout_backward_kernel(int size, float *input_grad,
 }
 
 void dropout_backward(Array *input_grad, const Array *output_grad,
-                      float drop_rate, const thrust::device_vector<char> mask) {
+                      float drop_rate,
+                      const thrust::device_vector<char> &mask) {
     const ShapeType &input_grad_shape = input_grad->get_shape();
     const ShapeType &output_grad_shape = output_grad->get_shape();
 

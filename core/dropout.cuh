@@ -27,8 +27,8 @@ private:
 };
 
 void dropout_forward(Array *output, const Array *input, float drop_rate,
-                     thrust::device_vector<char> mask);
+                     thrust::device_vector<char> &mask);
 void dropout_backward(Array *input_grad, const Array *output_grad,
-                      float drop_rate, const thrust::device_vector<char> mask);
+                      float drop_rate, const thrust::device_vector<char> &mask);
 
 } // namespace nnv2
