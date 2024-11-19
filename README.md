@@ -29,10 +29,12 @@ initialization, etc.
 
 | Classifier | Preprocessing | Optimizer | Run time | Max. test accuracy | Final test accuracy |
 | --- | --- | --- | --- | --- | --- |
-| 2 Conv + 1 FC (~11k params) + LogSoftmax + NLLLoss | Standardization | Adam | 69 sec | 0.9072 | 0.9054 |
-| 2 Conv + 3 FC (~62k params) + Softmax + CrossEntropyLoss | Standardization | SGD | 87 sec | 0.9093 | 0.9057 |
-| 2 Conv + 3 FC (~62k params) + LogSoftmax + NLLLoss | Standardization | RMSProp | 62 sec | 0.9009 | 0.8926 |
-| 3 Conv + 2 FC (~193k params) + LogSoftmax + NLLLoss | Scaling | RMSProp | 149 sec | 0.9043 | 0.9022 |
+| 2 Conv + 1 FC (~11k params) | Standardization | Adam | 68 sec | 0.9061 | 0.9034 |
+| 2 Conv + 3 FC (~62k params) | Standardization | SGD | 84 sec | 0.9068 | 0.8927 |
+| 2 Conv + 3 FC (~62k params) | Standardization | RMSProp | 61 sec | 0.8968 | 0.8964 |
+| 3 Conv + 2 FC (~193k params) | Scaling | RMSProp | 151 sec | 0.9023 | 0.9013 |
+| 3 Conv + 2 FC + Dropout (~193k params) | Scaling | RMSProp | 155 sec | 0.9027 | 0.8997 |
+| 3 Conv + 3 FC + Dropout (~685k params) | Standardization | Adam | 448 sec | 0.9022 | 0.9022 |
 
-Refer to this [notebook](https://colab.research.google.com/drive/1L7bxc2k-IakPnZemFQqPm9VdVAtycabU?usp=sharing)
+Refer to this [notebook](https://colab.research.google.com/drive/1PTEictwtufbPmYrmPti-UT2d56daOq6B?usp=sharing)
 for full demonstration of the training process.
