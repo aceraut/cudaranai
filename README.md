@@ -27,14 +27,18 @@ Table below documents the result of training different classifiers on
 30 epochs. Test accuracy may differ due to batch size, random seed for weight
 initialization, etc.
 
-| Classifier | Preprocessing | Optimizer | Run time | Max. test accuracy | Final test accuracy |
-| --- | --- | --- | --- | --- | --- |
-| 2 Conv + 1 FC (~11k params) | Standardization | Adam | 68 sec | 0.9061 | 0.9034 |
-| 2 Conv + 3 FC (~62k params) | Standardization | SGD | 84 sec | 0.9068 | 0.8927 |
-| 2 Conv + 3 FC (~62k params) | Standardization | RMSProp | 61 sec | 0.8968 | 0.8964 |
-| 3 Conv + 2 FC (~193k params) | Scaling | RMSProp | 151 sec | 0.9023 | 0.9013 |
-| 3 Conv + 2 FC + Dropout (~193k params) | Scaling | RMSProp | 155 sec | 0.9027 | 0.8997 |
-| 3 Conv + 3 FC + Dropout (~685k params) | Standardization | Adam | 448 sec | 0.9022 | 0.9022 |
+| Classifier | Optimizer | Run time | Max. test accuracy | Avg. test accuracy of the last 5 epochs |
+| --- | --- | --- | --- | --- |
+| 2 Conv + 1 FC (~11k params) | Adam | 68s | 0.9085 | 0.9073 |
+| 2 Conv + 3 FC (~62k params) | SGD | 84s | 0.9069 | 0.9006 |
+| 3 Conv + 2 FC (~193k params) | RMSProp | 150s | 0.9097 | 0.9014 |
+| 3 Conv + 2 FC (~193k params) + Dropout | RMSProp | 155s | 0.9069 | 0.8996 |
+| 3 Conv + 3 FC (~644k params) + Dropout | Adam | 361s | 0.9082 | 0.9028 |
+| 2 Conv + 2 FC (~3.27M params) + Dropout | SGD | 363s | 0.9211 | 0.9191 |
+
+Test accuracy progression
+
+![](docs/demo_accuracy.png)
 
 Refer to this [notebook](https://colab.research.google.com/drive/1PTEictwtufbPmYrmPti-UT2d56daOq6B?usp=sharing)
 for full demonstration of the training process.
