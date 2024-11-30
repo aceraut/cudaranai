@@ -16,8 +16,15 @@ namespace nnv2 {
 
 // Constants
 constexpr int BLOCK_SIZE = 256;
-constexpr int TILE_DIM = 16;
 constexpr float EPS = 1e-8;
+
+constexpr int TILE_DIM = 16;
+
+constexpr int BM = 128;
+constexpr int BN = 128;
+constexpr int BK = 8;
+constexpr int TM = 8;
+constexpr int TN = 8;
 
 // Type definitions
 using VecType = thrust::device_vector<float>;

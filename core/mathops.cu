@@ -64,6 +64,98 @@ __global__ void matmul_kernel(float *output, const float *input1,
     }
 }
 
+// Another implementation (which is really slow and not as precise)
+__global__ void matmul_kernel_exp(float *output, const float *input1,
+                                  const float *input2, int m, int n, int k,
+                                  int broadcast) {
+    __shared__ float block1[BM * BK];
+    __shared__ float block2[BK * BN];
+
+    float thread_output[TM * TN] = {0.0};
+    float tile1[TM] = {0.0};
+    float tile2[TM] = {0.0};
+
+    // Calculate offsets of the matrices
+    const int batch_idx = blockIdx.z;
+    if (broadcast != 1) {
+        input1 += batch_idx * m * k;
+    }
+    if (broadcast != 2) {
+        input2 += batch_idx * k * n;
+    }
+    output += batch_idx * m * n;
+
+    // Indices of current block in output matrix
+    const int block_row = blockIdx.y;
+    const int block_col = blockIdx.x;
+
+    // Indices of current chunk in said block
+    const int thread_row = threadIdx.x / (BN / TN);
+    const int thread_col = threadIdx.x % (BN / TN);
+
+    const int block_nthreads = blockDim.x;
+    const int chunk1_stride = block_nthreads / BK;
+    const int chunk2_stride = block_nthreads / BN;
+
+    const int chunk1_row = threadIdx.x / BK;
+    const int chunk1_col = threadIdx.x % BK;
+    const int chunk2_row = threadIdx.x / BN;
+    const int chunk2_col = threadIdx.x % BN;
+
+    for (int block_st = 0; block_st < k; block_st += BK) {
+        for (int offset = 0; offset < BM; offset += chunk1_stride) {
+            const int row_block1 = offset + chunk1_row;
+            const int col_block1 = chunk1_col;
+            const int row_input1 = block_row * BM + row_block1;
+            const int col_input1 = block_st + col_block1;
+
+            block1[row_block1 * BK + col_block1] =
+                (row_input1 < m && col_input1 < k)
+                    ? input1[row_input1 * k + col_input1]
+                    : 0;
+        }
+
+        for (int offset = 0; offset < BK; offset += chunk2_stride) {
+            const int row_block2 = offset + chunk2_row;
+            const int col_block2 = chunk2_col;
+            const int row_input2 = block_st + row_block2;
+            const int col_input2 = block_col * BN + col_block2;
+
+            block2[row_block2 * BN + col_block2] =
+                (row_input2 < k && col_input2 < n)
+                    ? input2[row_input2 * n + col_input2]
+                    : 0;
+        }
+        __syncthreads();
+
+        for (int dot_idx = 0; dot_idx < BK; dot_idx++) {
+            for (int i = 0; i < TM; i++) {
+                tile1[i] = block1[(thread_row * TM + i) * BK + dot_idx];
+            }
+            for (int i = 0; i < TN; i++) {
+                tile2[i] = block2[dot_idx * BN + thread_col * TN + i];
+            }
+            for (int x = 0; x < TM; x++) {
+                for (int y = 0; y < TN; y++) {
+                    thread_output[x * TN + y] += tile1[x] * tile2[y];
+                }
+            }
+        }
+        __syncthreads();
+    }
+
+    for (int x = 0; x < TM; x++) {
+        for (int y = 0; y < TN; y++) {
+            const int row_output = block_row * BM + thread_row * TM + x;
+            const int col_output = block_col * BN + thread_col * TN + y;
+            if (row_output < m && col_output < n) {
+                output[row_output * n + col_output] +=
+                    thread_output[x * TN + y];
+            }
+        }
+    }
+}
+
 __global__ void transpose_kernel(float *output, const float *input, int m,
                                  int n) {
     __shared__ float input_tile[TILE_DIM][TILE_DIM];
@@ -291,6 +383,18 @@ void matmul(Array *output, const Array *input1, const Array *input2,
     matmul_kernel<<<grid_dim, block_dim>>>(output_raw, input1_raw, input2_raw,
                                            m, n, k, broadcast);
     CUDA_POST_KERNEL_CHECK;
+
+    // dim3 grid_dim(utils::quotient_ceil(n, BN), utils::quotient_ceil(m, BM),
+    //               batch_size);
+    // dim3 block_dim((BM * BN) / (TM * TN));
+
+    // float *output_raw = RAW_PTR(output->get_vec());
+    // const float *input1_raw = RAW_PTR(input1->get_vec());
+    // const float *input2_raw = RAW_PTR(input2->get_vec());
+
+    // matmul_kernel_exp<<<grid_dim, block_dim>>>(
+    //     output_raw, input1_raw, input2_raw, m, n, k, broadcast);
+    // CUDA_POST_KERNEL_CHECK;
 }
 
 // Performs matrix tranpose. If the input has more than 2 dimensions, batch

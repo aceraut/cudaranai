@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cassert>
-#include <iostream>
 #include <cmath>
+#include <iostream>
 #include <vector>
 
 #include <thrust/copy.h>

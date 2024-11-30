@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     // Padding of (2, 2) is added to preserve width and height.
     // Input shape: [batch_size, 32, 14, 14]
     // Output shape: [batch_size, 64, 14, 14]
-    // No. of params: 32*64*5*5 + 64 = 51_264 
+    // No. of params: 32*64*5*5 + 64 = 51_264
     net.add(new Conv2D(32, 64, 14, 14, 2, 2, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
 

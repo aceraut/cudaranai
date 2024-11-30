@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     // Padding of (2, 2) is added to preserve width and height.
     // Input shape: [batch_size, 32, 14, 14]
     // Output shape: [batch_size, 64, 14, 14]
-    // No. of params: 32*64*5*5 + 64 = 51_264 
+    // No. of params: 32*64*5*5 + 64 = 51_264
     net.add(new Conv2D(32, 64, 14, 14, 2, 2, 5, 5, 1, 1, init.get()));
     net.add(new ReLU);
 
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     // Padding of (2, 2) is added to prevent missing pixels during max pooling
     // Input shape: [batch_size, 64, 7, 7]
     // Output shape: [batch_size, 128, 8, 8]
-    // No. of params: 64*128*2*2 + 128 = 32_896 
+    // No. of params: 64*128*2*2 + 128 = 32_896
     net.add(new Conv2D(64, 128, 7, 7, 1, 1, 2, 2, 1, 1, init.get()));
     net.add(new ReLU);
 
