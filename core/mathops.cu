@@ -68,12 +68,12 @@ __global__ void matmul_kernel(float *output, const float *input1,
 __global__ void matmul_kernel_exp(float *output, const float *input1,
                                   const float *input2, int m, int n, int k,
                                   int broadcast) {
-    __shared__ float block1[BM * BK];
-    __shared__ float block2[BK * BN];
+    __shared__ float block1[BM][BK];
+    __shared__ float block2[BK][BN];
 
     float thread_output[TM * TN] = {0.0};
-    float tile1[TM] = {0.0};
-    float tile2[TM] = {0.0};
+    float reg1[TM] = {0.0};
+    float reg2[TM] = {0.0};
 
     // Calculate offsets of the matrices
     const int batch_idx = blockIdx.z;
@@ -86,71 +86,86 @@ __global__ void matmul_kernel_exp(float *output, const float *input1,
     output += batch_idx * m * n;
 
     // Indices of current block in output matrix
-    const int block_row = blockIdx.y;
-    const int block_col = blockIdx.x;
+    const int bx = blockIdx.y;
+    const int by = blockIdx.x;
 
-    // Indices of current chunk in said block
-    const int thread_row = threadIdx.x / (BN / TN);
-    const int thread_col = threadIdx.x % (BN / TN);
+    // Indices of current grid in said output matrix block
+    const int tx = threadIdx.x / (BN / TN);
+    const int ty = threadIdx.x % (BN / TN);
 
-    const int block_nthreads = blockDim.x;
-    const int chunk1_stride = block_nthreads / BK;
-    const int chunk2_stride = block_nthreads / BN;
+    // Number of threads per block
+    const int nthreads = blockDim.x;
 
-    const int chunk1_row = threadIdx.x / BK;
-    const int chunk1_col = threadIdx.x % BK;
-    const int chunk2_row = threadIdx.x / BN;
-    const int chunk2_col = threadIdx.x % BN;
+    // In phase 1, we populate block1 by having all threads traverse (BM, BK)
+    // grids in the first input through a (nthreads/BK, BK) window, and populate
+    // block2 by having all threads traverse (BK, BN) grids in the second input
+    // through a (nthreads/BN, BN) window.
+    // The two constants are row strides on each traversal step.
+    const int win1_stride = nthreads / BK;
+    const int win2_stride = nthreads / BN;
 
-    for (int block_st = 0; block_st < k; block_st += BK) {
-        for (int offset = 0; offset < BM; offset += chunk1_stride) {
-            const int row_block1 = offset + chunk1_row;
-            const int col_block1 = chunk1_col;
-            const int row_input1 = block_row * BM + row_block1;
-            const int col_input1 = block_st + col_block1;
+    // Coordinates of the 2 current entries in those two windows
+    const int x_win1 = threadIdx.x / BK;
+    const int y_win1 = threadIdx.x % BK;
+    const int x_win2 = threadIdx.x / BN;
+    const int y_win2 = threadIdx.x % BN;
 
-            block1[row_block1 * BK + col_block1] =
-                (row_input1 < m && col_input1 < k)
-                    ? input1[row_input1 * k + col_input1]
-                    : 0;
+    for (int block_offset = 0; block_offset < k; block_offset += BK) {
+        // Populate block1
+        for (int win_offset = 0; win_offset < BM; win_offset += win1_stride) {
+            const int x_block1 = x_win1 + win_offset;
+            const int y_block1 = y_win1;
+            const int x_input1 = x_block1 + bx * BM;
+            const int y_input1 = y_block1 + block_offset;
+
+            block1[x_block1][y_block1] = (x_input1 < m && y_input1 < k)
+                                             ? input1[x_input1 * k + y_input1]
+                                             : 0.0;
         }
 
-        for (int offset = 0; offset < BK; offset += chunk2_stride) {
-            const int row_block2 = offset + chunk2_row;
-            const int col_block2 = chunk2_col;
-            const int row_input2 = block_st + row_block2;
-            const int col_input2 = block_col * BN + col_block2;
+        // Populate block2
+        for (int win_offset = 0; win_offset < BK; win_offset += win2_stride) {
+            const int x_block2 = x_win2 + win_offset;
+            const int y_block2 = y_win2;
+            const int x_input2 = x_block2 + block_offset;
+            const int y_input2 = y_block2 + by * BN;
 
-            block2[row_block2 * BN + col_block2] =
-                (row_input2 < k && col_input2 < n)
-                    ? input2[row_input2 * n + col_input2]
-                    : 0;
+            block1[x_block2][y_block2] = (x_input2 < k && y_input2 < n)
+                                             ? input1[x_input2 * n + y_input2]
+                                             : 0.0;
         }
         __syncthreads();
 
-        for (int dot_idx = 0; dot_idx < BK; dot_idx++) {
-            for (int i = 0; i < TM; i++) {
-                tile1[i] = block1[(thread_row * TM + i) * BK + dot_idx];
+        // In phase 2, each thread calculates a (TM, TN) tile in output matrix,
+        // corresponding to (TM, K) grid in the first input and (K, TN) grid in
+        // the second input. The outer loop traverses through K/BK blocks in
+        // both inputs so we only need to load a (TM, BK) grid in the first
+        // input and a (BK, TN) grid in the second one.
+        // The output value can be accumulated through BK (and K in broad)
+        // so we can simply load TM values on the first grid and TN values
+        // on the second grid.
+        for (int i = 0; i < BK; i++) {
+            for (int j = 0; j < TM; j++) {
+                reg1[j] = block1[tx * TM + j][i];
             }
-            for (int i = 0; i < TN; i++) {
-                tile2[i] = block2[dot_idx * BN + thread_col * TN + i];
+            for (int j = 0; j < TN; j++) {
+                reg2[j] = block2[i][ty * TN + j];
             }
             for (int x = 0; x < TM; x++) {
                 for (int y = 0; y < TN; y++) {
-                    thread_output[x * TN + y] += tile1[x] * tile2[y];
+                    thread_output[x * TN + y] += reg1[x] * reg2[y];
                 }
             }
         }
         __syncthreads();
     }
 
-    for (int x = 0; x < TM; x++) {
-        for (int y = 0; y < TN; y++) {
-            const int row_output = block_row * BM + thread_row * TM + x;
-            const int col_output = block_col * BN + thread_col * TN + y;
-            if (row_output < m && col_output < n) {
-                output[row_output * n + col_output] +=
-                    thread_output[x * TN + y];
+    for (int x_tile = 0; x_tile < TM; x_tile++) {
+        for (int y_tile = 0; y_tile < TN; y_tile++) {
+            const int x = bx * BM + tx * TM + x_tile;
+            const int y = by * BN + ty * TN + y_tile;
+            if (x < m && y < n) {
+                output[x * n + y] += thread_output[x_tile * TN + y_tile];
             }
         }
     }
@@ -372,8 +387,8 @@ void matmul(Array *output, const Array *input1, const Array *input2,
              "ops::matmul: shape mismatch between second input and output");
 
     // Launch kernels
-    dim3 grid_dim(utils::quotient_ceil(n, TILE_DIM),
-                  utils::quotient_ceil(m, TILE_DIM), batch_size);
+    dim3 grid_dim(utils::div_ceil(n, TILE_DIM), utils::div_ceil(m, TILE_DIM),
+                  batch_size);
     dim3 block_dim(TILE_DIM, TILE_DIM);
 
     float *output_raw = RAW_PTR(output->get_vec());
@@ -384,7 +399,7 @@ void matmul(Array *output, const Array *input1, const Array *input2,
                                            m, n, k, broadcast);
     CUDA_POST_KERNEL_CHECK;
 
-    // dim3 grid_dim(utils::quotient_ceil(n, BN), utils::quotient_ceil(m, BM),
+    // dim3 grid_dim(utils::div_ceil(n, BN), utils::div_ceil(m, BM),
     //               batch_size);
     // dim3 block_dim((BM * BN) / (TM * TN));
 
@@ -429,8 +444,8 @@ void transpose(Array *output, const Array *input) {
              "ops::transpose: shape mismatch between input and output");
 
     // Launch kernels
-    dim3 grid_dim(utils::quotient_ceil(n, TILE_DIM),
-                  utils::quotient_ceil(m, TILE_DIM), batch_size);
+    dim3 grid_dim(utils::div_ceil(n, TILE_DIM), utils::div_ceil(m, TILE_DIM),
+                  batch_size);
     dim3 block_dim(TILE_DIM, TILE_DIM);
 
     float *output_raw = RAW_PTR(output->get_vec());
@@ -466,7 +481,7 @@ void sum(Array *output, const Array *input, int axis, bool reduce) {
     int axis_size = input_shape[axis];
     int stride = std::accumulate(input_shape.begin() + axis + 1,
                                  input_shape.end(), 1, std::multiplies<int>());
-    int grid_size = utils::quotient_ceil(output_size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
@@ -502,7 +517,7 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
     int axis_size = input_shape[axis];
     int stride = std::accumulate(input_shape.begin() + axis + 1,
                                  input_shape.end(), 1, std::multiplies<int>());
-    int grid_size = utils::quotient_ceil(output_size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());

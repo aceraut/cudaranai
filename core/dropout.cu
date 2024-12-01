@@ -37,7 +37,7 @@ void dropout_forward(Array *output, const Array *input, float drop_rate,
         (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();
 
     int size = input->get_vec().size();
-    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(size, BLOCK_SIZE);
 
     dropout_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, output_raw, input_raw, mask_raw, drop_rate, seed);
@@ -68,7 +68,7 @@ void dropout_backward(Array *input_grad, const Array *output_grad,
     const char *mask_raw = RAW_PTR(mask);
 
     int size = output_grad->get_vec().size();
-    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(size, BLOCK_SIZE);
 
     dropout_backward_kernel<<<grid_size, BLOCK_SIZE>>>(
         size, input_grad_raw, output_grad_raw, mask_raw, drop_rate);

@@ -178,7 +178,7 @@ void softmax_forward(Array *output, const Array *input) {
     int batch_size = input_shape[0];
     int batch_stride = std::accumulate(
         input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
-    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
@@ -246,7 +246,7 @@ void log_softmax_forward(Array *output, const Array *input) {
     int batch_size = input_shape[0];
     int batch_stride = std::accumulate(
         input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
-    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
     const float *input_raw = RAW_PTR(input->get_vec());
     float *output_raw = RAW_PTR(output->get_vec());
@@ -311,7 +311,7 @@ void log_softmax_backward(Array *input_grad, const Array *output_grad,
     int batch_size = input_shape[0];
     int batch_stride = std::accumulate(
         input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
-    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
     float *input_grad_raw = RAW_PTR(input_grad->get_vec());
     const float *output_grad_raw = RAW_PTR(output_grad->get_vec());

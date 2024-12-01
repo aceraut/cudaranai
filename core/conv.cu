@@ -87,8 +87,7 @@ void im2col(const Array *im, Array *col, int pad_h, int pad_w, int filter_h,
     int col_stride = filter_h * filter_w * out_h * out_w;
 
     int size = out_h * out_w;
-    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
-                  batch_size * im_feats);
+    dim3 grid_dim(utils::div_ceil(size, BLOCK_SIZE), batch_size * im_feats);
 
     const float *im_raw = RAW_PTR(im->get_vec());
     float *col_raw = RAW_PTR(col->get_vec());
@@ -166,7 +165,7 @@ void conv_forward_bias(Array *output, const Array *bias) {
              "output features");
 
     int size = output->get_vec().size();
-    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(size, BLOCK_SIZE);
     float *output_raw = RAW_PTR(output->get_vec());
     const float *bias_raw = RAW_PTR(bias->get_vec());
 
@@ -251,8 +250,7 @@ void col2im(const Array *col, Array *im, int pad_h, int pad_w, int filter_h,
     int col_stride = filter_h * filter_w * out_h * out_w;
 
     int size = im_h * im_w;
-    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
-                  batch_size * im_feats);
+    dim3 grid_dim(utils::div_ceil(size, BLOCK_SIZE), batch_size * im_feats);
 
     float *im_raw = RAW_PTR(im->get_vec());
     const float *col_raw = RAW_PTR(col->get_vec());

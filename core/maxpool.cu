@@ -81,8 +81,7 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     int out_h = output_shape[2];
     int out_w = output_shape[3];
     int size = out_h * out_w; // is also out_stride
-    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
-                  batch_size * in_feats);
+    dim3 grid_dim(utils::div_ceil(size, BLOCK_SIZE), batch_size * in_feats);
 
     float *output_raw = RAW_PTR(output->get_vec());
     float *indices_raw = RAW_PTR(indices->get_vec());
@@ -171,8 +170,7 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
     int out_h = output_grad_shape[2];
     int out_w = output_grad_shape[3];
     int out_stride = out_h * out_w;
-    dim3 grid_dim(utils::quotient_ceil(size, BLOCK_SIZE),
-                  batch_size * in_feats);
+    dim3 grid_dim(utils::div_ceil(size, BLOCK_SIZE), batch_size * in_feats);
 
     float *input_grad_raw = RAW_PTR(input_grad->get_vec());
     const float *output_grad_raw = RAW_PTR(output_grad->get_vec());

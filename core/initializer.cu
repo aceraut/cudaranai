@@ -32,7 +32,7 @@ static void normal_init(VecType &vec, float s) {
         (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();
 
     int size = vec.size();
-    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(size, BLOCK_SIZE);
 
     normal_init_kernel<<<grid_size, BLOCK_SIZE>>>(size, vec_raw, 0, s, seed);
     CUDA_POST_KERNEL_CHECK;
@@ -54,7 +54,7 @@ static void uniform_init(VecType &vec, float r) {
         (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();
 
     int size = vec.size();
-    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(size, BLOCK_SIZE);
 
     uniform_init_kernel<<<grid_size, BLOCK_SIZE>>>(size, vec_raw, -r, r, seed);
     CUDA_POST_KERNEL_CHECK;

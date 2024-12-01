@@ -52,7 +52,7 @@ void linear_forward_bias(Array *output, const Array *bias) {
              "output features");
 
     int size = batch_size * out_feats;
-    int grid_size = utils::quotient_ceil(size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(size, BLOCK_SIZE);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *bias_raw = RAW_PTR(bias->get_vec());

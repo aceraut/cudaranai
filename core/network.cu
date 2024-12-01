@@ -148,7 +148,7 @@ std::pair<int, int> Network::top1_accuracy(const Array *preds, const Array *y) {
     int batch_size = preds->get_shape()[0];
     int label_stride = preds->get_shape()[1];
 
-    int grid_size = utils::quotient_ceil(batch_size, BLOCK_SIZE);
+    int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
     is_accurate.resize(batch_size);
     int *is_accurate_raw = RAW_PTR(is_accurate);

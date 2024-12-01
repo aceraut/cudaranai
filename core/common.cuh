@@ -82,7 +82,7 @@ void set_array_cache(ArrayMap &map, std::string key,
                      const std::vector<int> &shape);
 
 // Calculates rounded up decimal quotient of two integers
-int quotient_ceil(int a, int b);
+int div_ceil(int a, int b);
 
 } // namespace utils
 
