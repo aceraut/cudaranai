@@ -18,8 +18,10 @@ namespace nnv2 {
 constexpr int BLOCK_SIZE = 256;
 constexpr float EPS = 1e-8;
 
-constexpr int TILE_DIM = 16;
+// Used in matmul_lvl1 and transpose kernels
+constexpr int TILE_DIM = 32;
 
+// Used in matmul kernel
 constexpr int BM = 128;
 constexpr int BN = 128;
 constexpr int BK = 8;

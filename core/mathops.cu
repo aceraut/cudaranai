@@ -11,14 +11,14 @@
 
 namespace nnv2 {
 
-__global__ void matmul_kernel(float *output, const float *input1,
-                              const float *input2, int m, int n, int k,
-                              int broadcast) {
+__global__ void matmul_kernel_lv1(float *output, const float *input1,
+                                  const float *input2, int m, int n, int k,
+                                  int broadcast) {
     __shared__ float input1_tile[TILE_DIM][TILE_DIM];
     __shared__ float input2_tile[TILE_DIM][TILE_DIM];
 
     // Calculate offsets of the matrices
-    int batch_idx = blockIdx.z;
+    const int batch_idx = blockIdx.z;
     if (broadcast != 1) {
         input1 += batch_idx * m * k;
     }
@@ -27,17 +27,17 @@ __global__ void matmul_kernel(float *output, const float *input1,
     }
     output += batch_idx * m * n;
 
-    int bx = blockIdx.x;
-    int by = blockIdx.y;
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
+    const int bx = blockIdx.x;
+    const int by = blockIdx.y;
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
 
-    int row = by * TILE_DIM + ty;
-    int col = bx * TILE_DIM + tx;
+    const int row = by * TILE_DIM + ty;
+    const int col = bx * TILE_DIM + tx;
 
     // Loop over input tiles to calculate the dot value
     float value = 0;
-    int tile_count = (k + TILE_DIM - 1) / TILE_DIM;
+    const int tile_count = (k + TILE_DIM - 1) / TILE_DIM;
 
     for (int i = 0; i < tile_count; i++) {
         // Load input tiles to shared memory
@@ -64,18 +64,17 @@ __global__ void matmul_kernel(float *output, const float *input1,
     }
 }
 
-// Another implementation (which is really slow and not as precise)
-__global__ void matmul_kernel_exp(float *output, const float *input1,
-                                  const float *input2, int m, int n, int k,
-                                  int broadcast) {
+__global__ void matmul_kernel(float *output, const float *input1,
+                              const float *input2, int m, int n, int k,
+                              int broadcast) {
     __shared__ float block1[BM][BK];
     __shared__ float block2[BK][BN];
 
-    float thread_output[TM * TN] = {0.0};
-    float reg1[TM] = {0.0};
-    float reg2[TM] = {0.0};
+    float thread_output[TM * TN] = {0.0f};
+    float reg1[TM];
+    float reg2[TN];
 
-    // Calculate offsets of the matrices
+    // Calculate matrix offsets
     const int batch_idx = blockIdx.z;
     if (broadcast != 1) {
         input1 += batch_idx * m * k;
@@ -85,87 +84,77 @@ __global__ void matmul_kernel_exp(float *output, const float *input1,
     }
     output += batch_idx * m * n;
 
-    // Indices of current block in output matrix
-    const int bx = blockIdx.y;
-    const int by = blockIdx.x;
+    // Block offsets from matrix
+    const int bx = blockIdx.y * BM;
+    const int by = blockIdx.x * BN;
 
-    // Indices of current grid in said output matrix block
-    const int tx = threadIdx.x / (BN / TN);
-    const int ty = threadIdx.x % (BN / TN);
+    // Thread offsets from block
+    const int tx = (threadIdx.x / (BN / TN)) * TM;
+    const int ty = (threadIdx.x % (BN / TN)) * TN;
 
     // Number of threads per block
     const int nthreads = blockDim.x;
 
-    // In phase 1, we populate block1 by having all threads traverse (BM, BK)
-    // grids in the first input through a (nthreads/BK, BK) window, and populate
-    // block2 by having all threads traverse (BK, BN) grids in the second input
-    // through a (nthreads/BN, BN) window.
-    // The two constants are row strides on each traversal step.
+    // Strides for tile traversal
     const int win1_stride = nthreads / BK;
     const int win2_stride = nthreads / BN;
 
-    // Coordinates of the 2 current entries in those two windows
+    // Coordinates within tiles
     const int x_win1 = threadIdx.x / BK;
     const int y_win1 = threadIdx.x % BK;
     const int x_win2 = threadIdx.x / BN;
     const int y_win2 = threadIdx.x % BN;
 
     for (int block_offset = 0; block_offset < k; block_offset += BK) {
-        // Populate block1
-        for (int win_offset = 0; win_offset < BM; win_offset += win1_stride) {
-            const int x_block1 = x_win1 + win_offset;
-            const int y_block1 = y_win1;
-            const int x_input1 = x_block1 + bx * BM;
-            const int y_input1 = y_block1 + block_offset;
+        int x_block, y_block, x_input, y_input;
 
-            block1[x_block1][y_block1] = (x_input1 < m && y_input1 < k)
-                                             ? input1[x_input1 * k + y_input1]
-                                             : 0.0;
+        // Load block1 from global memory
+        for (int win_offset = 0; win_offset < BM; win_offset += win1_stride) {
+            x_block = x_win1 + win_offset;
+            y_block = y_win1;
+            x_input = x_block + bx;
+            y_input = y_block + block_offset;
+            block1[x_block][y_block] = (x_input < m && y_input < k)
+                                           ? input1[x_input * k + y_input]
+                                           : 0.0f;
         }
 
-        // Populate block2
+        // Load block2 from global memory
         for (int win_offset = 0; win_offset < BK; win_offset += win2_stride) {
-            const int x_block2 = x_win2 + win_offset;
-            const int y_block2 = y_win2;
-            const int x_input2 = x_block2 + block_offset;
-            const int y_input2 = y_block2 + by * BN;
-
-            block1[x_block2][y_block2] = (x_input2 < k && y_input2 < n)
-                                             ? input1[x_input2 * n + y_input2]
-                                             : 0.0;
+            x_block = x_win2 + win_offset;
+            y_block = y_win2;
+            x_input = x_block + block_offset;
+            y_input = y_block + by;
+            block2[x_block][y_block] = (x_input < k && y_input < n)
+                                           ? input2[x_input * n + y_input]
+                                           : 0.0f;
         }
         __syncthreads();
 
-        // In phase 2, each thread calculates a (TM, TN) tile in output matrix,
-        // corresponding to (TM, K) grid in the first input and (K, TN) grid in
-        // the second input. The outer loop traverses through K/BK blocks in
-        // both inputs so we only need to load a (TM, BK) grid in the first
-        // input and a (BK, TN) grid in the second one.
-        // The output value can be accumulated through BK (and K in broad)
-        // so we can simply load TM values on the first grid and TN values
-        // on the second grid.
+        // Compute local tile products and accumulate
         for (int i = 0; i < BK; i++) {
             for (int j = 0; j < TM; j++) {
-                reg1[j] = block1[tx * TM + j][i];
+                reg1[j] = block1[tx + j][i];
             }
-            for (int j = 0; j < TN; j++) {
-                reg2[j] = block2[i][ty * TN + j];
+            for (int l = 0; l < TN; l++) {
+                reg2[l] = block2[i][ty + l];
             }
-            for (int x = 0; x < TM; x++) {
-                for (int y = 0; y < TN; y++) {
-                    thread_output[x * TN + y] += reg1[x] * reg2[y];
+            for (int j = 0; j < TM; j++) {
+                for (int l = 0; l < TN; l++) {
+                    thread_output[j * TN + l] += reg1[j] * reg2[l];
                 }
             }
         }
         __syncthreads();
     }
 
-    for (int x_tile = 0; x_tile < TM; x_tile++) {
-        for (int y_tile = 0; y_tile < TN; y_tile++) {
-            const int x = bx * BM + tx * TM + x_tile;
-            const int y = by * BN + ty * TN + y_tile;
+    // Write final output back to global memory
+    for (int j = 0; j < TM; j++) {
+        for (int l = 0; l < TN; l++) {
+            int x = bx + tx + j;
+            int y = by + ty + l;
             if (x < m && y < n) {
-                output[x * n + y] += thread_output[x_tile * TN + y_tile];
+                output[x * n + y] = thread_output[j * TN + l];
             }
         }
     }
@@ -387,29 +376,16 @@ void matmul(Array *output, const Array *input1, const Array *input2,
              "ops::matmul: shape mismatch between second input and output");
 
     // Launch kernels
-    dim3 grid_dim(utils::div_ceil(n, TILE_DIM), utils::div_ceil(m, TILE_DIM),
-                  batch_size);
-    dim3 block_dim(TILE_DIM, TILE_DIM);
-
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input1_raw = RAW_PTR(input1->get_vec());
     const float *input2_raw = RAW_PTR(input2->get_vec());
 
+    dim3 grid_dim(utils::div_ceil(n, BN), utils::div_ceil(m, BM), batch_size);
+    dim3 block_dim((BM * BN) / (TM * TN));
+
     matmul_kernel<<<grid_dim, block_dim>>>(output_raw, input1_raw, input2_raw,
                                            m, n, k, broadcast);
     CUDA_POST_KERNEL_CHECK;
-
-    // dim3 grid_dim(utils::div_ceil(n, BN), utils::div_ceil(m, BM),
-    //               batch_size);
-    // dim3 block_dim((BM * BN) / (TM * TN));
-
-    // float *output_raw = RAW_PTR(output->get_vec());
-    // const float *input1_raw = RAW_PTR(input1->get_vec());
-    // const float *input2_raw = RAW_PTR(input2->get_vec());
-
-    // matmul_kernel_exp<<<grid_dim, block_dim>>>(
-    //     output_raw, input1_raw, input2_raw, m, n, k, broadcast);
-    // CUDA_POST_KERNEL_CHECK;
 }
 
 // Performs matrix tranpose. If the input has more than 2 dimensions, batch
