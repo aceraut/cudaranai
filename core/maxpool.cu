@@ -12,9 +12,8 @@ namespace nnv2 {
 // The forward phase of max-pooling layer involves selecting the pixel with the
 // largest value in every smaller local patches of the input feature maps and
 // place them in the output feature maps.
-
 __global__ void maxpool_forward_kernel(int size, float *output,
-                                       float *max_indices, const float *input,
+                                       int *max_indices, const float *input,
                                        int in_h, int in_w, int pad_h, int pad_w,
                                        int filter_h, int filter_w, int stride_h,
                                        int stride_w, int out_h, int out_w,
@@ -58,22 +57,22 @@ __global__ void maxpool_forward_kernel(int size, float *output,
     }
 }
 
-void maxpool_forward(Array *output, const Array *input, Array *indices,
-                     int pad_h, int pad_w, int filter_h, int filter_w,
-                     int stride_h, int stride_w) {
+void maxpool_forward(Array *output, const Array *input,
+                     thrust::device_vector<int> &indices, int pad_h, int pad_w,
+                     int filter_h, int filter_w, int stride_h, int stride_w) {
     const ShapeType &output_shape = output->get_shape();
     const ShapeType &input_shape = input->get_shape();
 
     CHECK_EQ(output_shape.size(), 4, "maxpool_forward: output shape error");
     CHECK_EQ(input_shape.size(), 4, "maxpool_forward: input shape error");
+    CHECK_EQ(indices.size(), output->get_vec().size(),
+             "maxpool_forward: size mismatch beetween indices and output");
 
     int batch_size = input_shape[0];
     int in_feats = input_shape[1];
 
     CHECK_EQ(output_shape[0], batch_size, "maxpool_forward: batch size error");
     CHECK_EQ(output_shape[1], in_feats, "maxpool_forward: feature size error");
-    CHECK_EQ(indices->get_shape(), output_shape,
-             "maxpool_forward: shape mismatch beetween indices and output");
 
     int in_h = input_shape[2];
     int in_w = input_shape[3];
@@ -84,7 +83,7 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     dim3 grid_dim(utils::div_ceil(size, BLOCK_SIZE), batch_size * in_feats);
 
     float *output_raw = RAW_PTR(output->get_vec());
-    float *indices_raw = RAW_PTR(indices->get_vec());
+    int *indices_raw = RAW_PTR(indices);
     const float *input_raw = RAW_PTR(input->get_vec());
 
     maxpool_forward_kernel<<<grid_dim, BLOCK_SIZE>>>(
@@ -93,58 +92,28 @@ void maxpool_forward(Array *output, const Array *input, Array *indices,
     CUDA_POST_KERNEL_CHECK;
 }
 
-// The backward phase of the max-pooling layer involves assigning the value of
-// each pixel in the output gradient to the corresponding pixels in the input
-// feature maps that were selected as maxima during the forward phase. If a
-// pixel in the input feature map contributes to multiple output pixels, its
-// gradient value is the sum of the gradients from all the output pixels where
-// it was chosen.
-
-__global__ void
-maxpool_backward_kernel(int size, float *input_grad, const float *output_grad,
-                        const float *max_indices, int in_h, int in_w, int pad_h,
-                        int pad_w, int filter_h, int filter_w, int stride_h,
-                        int stride_w, int out_h, int out_w, int in_stride,
-                        int out_stride) {
-    // Each thread handles a pixel in the input image
+// Each output gradient is propagated back to its pooled position in the input.
+__global__ void maxpool_backward_kernel(int size, float *input_grad,
+                                        const float *output_grad,
+                                        const int *max_indices, int in_stride,
+                                        int out_stride) {
     CUDA_GRID_STRIDE_LOOP(idx, size) {
-        // Point to input and output images that this thread handles
         int feat_idx = blockIdx.y;
         input_grad += feat_idx * in_stride;
         output_grad += feat_idx * out_stride;
         max_indices += feat_idx * out_stride;
 
-        // Coord in input image
-        int in_x = (idx / in_w) % in_h + pad_h;
-        int in_y = idx % in_w + pad_w;
+        int pooled_index = max_indices[idx];
+        float grad_value = output_grad[idx];
 
-        // Locate the base coords of the section in the output image that
-        // depends on pixel (in_x, in_y) of the input image
-        int out_x_start =
-            (in_x < filter_h) ? 0 : (in_x - filter_h) / stride_h + 1;
-        int out_x_end = fminf(out_h, in_x / stride_h + 1);
-        int out_y_start =
-            (in_y < filter_w) ? 0 : (in_y - filter_w) / stride_w + 1;
-        int out_y_end = fminf(out_w, in_y / stride_w + 1);
-
-        float value = 0;
-        in_x -= pad_h;
-        in_y -= pad_w; // Since max_indices are unpadded
-
-        for (int out_x = out_x_start; out_x < out_x_end; out_x++) {
-            for (int out_y = out_y_start; out_y < out_y_end; out_y++) {
-                if (max_indices[out_x * out_w + out_y] == in_x * in_w + in_y) {
-                    value += output_grad[out_x * out_w + out_y];
-                }
-            }
-        }
-        input_grad[idx] = value;
+        atomicAdd(&input_grad[pooled_index], grad_value);
     }
 }
 
 void maxpool_backward(Array *input_grad, const Array *output_grad,
-                      const Array *indices, int pad_h, int pad_w, int filter_h,
-                      int filter_w, int stride_h, int stride_w) {
+                      const thrust::device_vector<int> &indices, int pad_h,
+                      int pad_w, int filter_h, int filter_w, int stride_h,
+                      int stride_w) {
     const ShapeType &input_grad_shape = input_grad->get_shape();
     const ShapeType &output_grad_shape = output_grad->get_shape();
 
@@ -152,6 +121,8 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
              "maxpool_backward: input gradient shape error");
     CHECK_EQ(output_grad_shape.size(), 4,
              "maxpool_backward: output gradient shape error");
+    CHECK_EQ(indices.size(), output_grad->get_vec().size(),
+             "maxpool_backward: size mismatch between indices and output grad");
 
     int batch_size = input_grad_shape[0];
     int in_feats = input_grad_shape[1];
@@ -160,25 +131,18 @@ void maxpool_backward(Array *input_grad, const Array *output_grad,
              "maxpool_backward: batch size error");
     CHECK_EQ(output_grad_shape[1], in_feats,
              "maxpool_backward: feature size error");
-    CHECK_EQ(indices->get_shape(), output_grad_shape,
-             "maxpool_backward: shape mismatch between indices and output "
-             "grad");
 
-    int in_h = input_grad_shape[2];
-    int in_w = input_grad_shape[3];
-    int size = in_h * in_w; // is also in_stride
-    int out_h = output_grad_shape[2];
-    int out_w = output_grad_shape[3];
-    int out_stride = out_h * out_w;
-    dim3 grid_dim(utils::div_ceil(size, BLOCK_SIZE), batch_size * in_feats);
+    int in_stride = input_grad_shape[2] * input_grad_shape[3];
+    int out_stride = output_grad_shape[2] * output_grad_shape[3];
+    dim3 grid_dim(utils::div_ceil(out_stride, BLOCK_SIZE),
+                  batch_size * in_feats);
 
     float *input_grad_raw = RAW_PTR(input_grad->get_vec());
     const float *output_grad_raw = RAW_PTR(output_grad->get_vec());
-    const float *indices_raw = RAW_PTR(indices->get_vec());
+    const int *indices_raw = RAW_PTR(indices);
 
     maxpool_backward_kernel<<<grid_dim, BLOCK_SIZE>>>(
-        size, input_grad_raw, output_grad_raw, indices_raw, in_h, in_w, pad_h,
-        pad_w, filter_h, filter_w, stride_h, stride_w, out_h, out_w, size,
+        out_stride, input_grad_raw, output_grad_raw, indices_raw, in_stride,
         out_stride);
     CUDA_POST_KERNEL_CHECK;
 }
@@ -200,9 +164,9 @@ void MaxPool2D::forward() {
     int out_w = (in_w + 2 * pad_w - kernel_w) / stride_w + 1;
 
     utils::set_array_ptr(output, {batch_size, in_feats, out_h, out_w});
-    utils::set_array_ptr(indices, output->get_shape());
+    indices.resize(output->get_vec().size());
 
-    maxpool_forward(output.get(), input, indices.get(), pad_h, pad_w, kernel_h,
+    maxpool_forward(output.get(), input, indices, pad_h, pad_w, kernel_h,
                     kernel_w, stride_h, stride_w);
 }
 
@@ -212,8 +176,8 @@ void MaxPool2D::backward() {
 
     utils::set_array_ptr(grad, input->get_shape());
 
-    maxpool_backward(grad.get(), output_grad, indices.get(), pad_h, pad_w,
-                     kernel_h, kernel_w, stride_h, stride_w);
+    maxpool_backward(grad.get(), output_grad, indices, pad_h, pad_w, kernel_h,
+                     kernel_w, stride_h, stride_w);
 }
 
 } // namespace nnv2
