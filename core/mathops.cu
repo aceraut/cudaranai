@@ -11,68 +11,15 @@
 
 namespace nnv2 {
 
-__global__ void matmul_kernel_lv1(float *output, const float *input1,
-                                  const float *input2, int m, int n, int k,
-                                  int broadcast) {
-    __shared__ float input1_tile[TILE_DIM][TILE_DIM];
-    __shared__ float input2_tile[TILE_DIM][TILE_DIM];
-
-    // Calculate offsets of the matrices
-    const int batch_idx = blockIdx.z;
-    if (broadcast != 1) {
-        input1 += batch_idx * m * k;
-    }
-    if (broadcast != 2) {
-        input2 += batch_idx * k * n;
-    }
-    output += batch_idx * m * n;
-
-    const int bx = blockIdx.x;
-    const int by = blockIdx.y;
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
-
-    const int row = by * TILE_DIM + ty;
-    const int col = bx * TILE_DIM + tx;
-
-    // Loop over input tiles to calculate the dot value
-    float value = 0;
-    const int tile_count = (k + TILE_DIM - 1) / TILE_DIM;
-
-    for (int i = 0; i < tile_count; i++) {
-        // Load input tiles to shared memory
-        if (row < m && i * TILE_DIM + tx < k) {
-            input1_tile[ty][tx] = input1[row * k + i * TILE_DIM + tx];
-        } else {
-            input1_tile[ty][tx] = 0;
-        }
-        if (col < n && i * TILE_DIM + ty < k) {
-            input2_tile[ty][tx] = input2[(i * TILE_DIM + ty) * n + col];
-        } else {
-            input2_tile[ty][tx] = 0;
-        }
-        __syncthreads();
-
-        for (int j = 0; j < TILE_DIM; j++) {
-            value += input1_tile[ty][j] * input2_tile[j][tx];
-        }
-        __syncthreads();
-    }
-
-    if (row < m && col < n) {
-        output[row * n + col] = value;
-    }
-}
-
 __global__ void matmul_kernel(float *output, const float *input1,
                               const float *input2, int m, int n, int k,
                               int broadcast) {
-    __shared__ float block1[BM][BK];
-    __shared__ float block2[BK][BN];
+    __shared__ float tile1[MMUL_BM][MMUL_BK];
+    __shared__ float tile2[MMUL_BK][MMUL_BN];
 
-    float thread_output[TM * TN] = {0.0f};
-    float reg1[TM];
-    float reg2[TN];
+    float thread_output[MMUL_TM * MMUL_TN] = {0.0f};
+    float reg1[MMUL_TM];
+    float reg2[MMUL_TN];
 
     // Calculate matrix offsets
     const int batch_idx = blockIdx.z;
@@ -85,63 +32,65 @@ __global__ void matmul_kernel(float *output, const float *input1,
     output += batch_idx * m * n;
 
     // Block offsets from matrix
-    const int bx = blockIdx.y * BM;
-    const int by = blockIdx.x * BN;
+    const int bx = blockIdx.y * MMUL_BM;
+    const int by = blockIdx.x * MMUL_BN;
 
     // Thread offsets from block
-    const int tx = (threadIdx.x / (BN / TN)) * TM;
-    const int ty = (threadIdx.x % (BN / TN)) * TN;
+    const int tx = (threadIdx.x / (MMUL_BN / MMUL_TN)) * MMUL_TM;
+    const int ty = (threadIdx.x % (MMUL_BN / MMUL_TN)) * MMUL_TN;
 
     // Number of threads per block
     const int nthreads = blockDim.x;
 
     // Strides for tile traversal
-    const int win1_stride = nthreads / BK;
-    const int win2_stride = nthreads / BN;
+    const int win1_stride = nthreads / MMUL_BK;
+    const int win2_stride = nthreads / MMUL_BN;
 
     // Coordinates within tiles
-    const int x_win1 = threadIdx.x / BK;
-    const int y_win1 = threadIdx.x % BK;
-    const int x_win2 = threadIdx.x / BN;
-    const int y_win2 = threadIdx.x % BN;
+    const int x_win1 = threadIdx.x / MMUL_BK;
+    const int y_win1 = threadIdx.x % MMUL_BK;
+    const int x_win2 = threadIdx.x / MMUL_BN;
+    const int y_win2 = threadIdx.x % MMUL_BN;
 
-    for (int block_offset = 0; block_offset < k; block_offset += BK) {
+    for (int block_offset = 0; block_offset < k; block_offset += MMUL_BK) {
         int x_block, y_block, x_input, y_input;
 
-        // Load block1 from global memory
-        for (int win_offset = 0; win_offset < BM; win_offset += win1_stride) {
+        // Load tile1 from global memory
+        for (int win_offset = 0; win_offset < MMUL_BM;
+             win_offset += win1_stride) {
             x_block = x_win1 + win_offset;
             y_block = y_win1;
             x_input = x_block + bx;
             y_input = y_block + block_offset;
-            block1[x_block][y_block] = (x_input < m && y_input < k)
-                                           ? input1[x_input * k + y_input]
-                                           : 0.0f;
+            tile1[x_block][y_block] = (x_input < m && y_input < k)
+                                          ? input1[x_input * k + y_input]
+                                          : 0.0f;
         }
 
-        // Load block2 from global memory
-        for (int win_offset = 0; win_offset < BK; win_offset += win2_stride) {
+        // Load tile2 from global memory
+        for (int win_offset = 0; win_offset < MMUL_BK;
+             win_offset += win2_stride) {
             x_block = x_win2 + win_offset;
             y_block = y_win2;
             x_input = x_block + block_offset;
             y_input = y_block + by;
-            block2[x_block][y_block] = (x_input < k && y_input < n)
-                                           ? input2[x_input * n + y_input]
-                                           : 0.0f;
+            tile2[x_block][y_block] = (x_input < k && y_input < n)
+                                          ? input2[x_input * n + y_input]
+                                          : 0.0f;
         }
         __syncthreads();
 
         // Compute local tile products and accumulate
-        for (int i = 0; i < BK; i++) {
-            for (int j = 0; j < TM; j++) {
-                reg1[j] = block1[tx + j][i];
+        for (int i = 0; i < MMUL_BK; i++) {
+            for (int j = 0; j < MMUL_TM; j++) {
+                reg1[j] = tile1[tx + j][i];
             }
-            for (int l = 0; l < TN; l++) {
-                reg2[l] = block2[i][ty + l];
+            for (int l = 0; l < MMUL_TN; l++) {
+                reg2[l] = tile2[i][ty + l];
             }
-            for (int j = 0; j < TM; j++) {
-                for (int l = 0; l < TN; l++) {
-                    thread_output[j * TN + l] += reg1[j] * reg2[l];
+            for (int j = 0; j < MMUL_TM; j++) {
+                for (int l = 0; l < MMUL_TN; l++) {
+                    thread_output[j * MMUL_TN + l] += reg1[j] * reg2[l];
                 }
             }
         }
@@ -149,12 +98,12 @@ __global__ void matmul_kernel(float *output, const float *input1,
     }
 
     // Write final output back to global memory
-    for (int j = 0; j < TM; j++) {
-        for (int l = 0; l < TN; l++) {
+    for (int j = 0; j < MMUL_TM; j++) {
+        for (int l = 0; l < MMUL_TN; l++) {
             int x = bx + tx + j;
             int y = by + ty + l;
             if (x < m && y < n) {
-                output[x * n + y] = thread_output[j * TN + l];
+                output[x * n + y] = thread_output[j * MMUL_TN + l];
             }
         }
     }
@@ -162,26 +111,57 @@ __global__ void matmul_kernel(float *output, const float *input1,
 
 __global__ void transpose_kernel(float *output, const float *input, int m,
                                  int n) {
-    __shared__ float input_tile[TILE_DIM][TILE_DIM];
-
-    int batch_idx = blockIdx.z;
-    input += batch_idx * m * n;
-    output += batch_idx * n * m;
+    __shared__ float tile[XPOSE_BN][XPOSE_BN + 1];
 
     int bx = blockIdx.y;
     int by = blockIdx.x;
     int tx = threadIdx.y;
     int ty = threadIdx.x;
 
-    int row = bx * TILE_DIM + tx;
-    int col = by * TILE_DIM + ty;
+    int x = bx * XPOSE_BN + tx;
+    int y = by * XPOSE_BN + ty;
 
-    if (row < m && col < n) {
-        input_tile[tx][ty] = input[row * n + col];
-        __syncthreads();
-        output[col * m + row] = input_tile[tx][ty];
+    for (int row_offset = 0; row_offset < XPOSE_BN; row_offset += XPOSE_BM) {
+        if (y < n && row_offset + x < m) {
+            tile[row_offset + tx][ty] = input[(row_offset + x) * n + y];
+        }
+    }
+
+    __syncthreads();
+
+    // Calculate the transposed output position
+    x = by * XPOSE_BN + tx;
+    y = bx * XPOSE_BN + ty;
+
+    for (int row_offset = 0; row_offset < XPOSE_BN; row_offset += XPOSE_BM) {
+        if (y < m && row_offset + x < n) {
+            output[(row_offset + x) * m + y] = tile[ty][row_offset + tx];
+        }
     }
 }
+
+// __global__ void transpose_kernel(float *output, const float *input, int m,
+//                                  int n) {
+//     __shared__ float input_tile[XPOSE_BN][XPOSE_BN + 1];
+
+//     int batch_idx = blockIdx.z;
+//     input += batch_idx * m * n;
+//     output += batch_idx * n * m;
+
+//     int bx = blockIdx.y;
+//     int by = blockIdx.x;
+//     int tx = threadIdx.y;
+//     int ty = threadIdx.x;
+
+//     int x = bx * XPOSE_BN + tx;
+//     int y = by * XPOSE_BN + ty;
+
+//     if (x < m && y < n) {
+//         input_tile[tx][ty] = input[x * n + y];
+//         __syncthreads();
+//         output[y * m + x] = input_tile[tx][ty];
+//     }
+// }
 
 __global__ void sum_kernel(int size, float *output, const float *input,
                            int axis_size, int stride) {
@@ -380,8 +360,9 @@ void matmul(Array *output, const Array *input1, const Array *input2,
     const float *input1_raw = RAW_PTR(input1->get_vec());
     const float *input2_raw = RAW_PTR(input2->get_vec());
 
-    dim3 grid_dim(utils::div_ceil(n, BN), utils::div_ceil(m, BM), batch_size);
-    dim3 block_dim((BM * BN) / (TM * TN));
+    dim3 grid_dim(utils::div_ceil(n, MMUL_BN), utils::div_ceil(m, MMUL_BM),
+                  batch_size);
+    dim3 block_dim((MMUL_BM * MMUL_BN) / (MMUL_TM * MMUL_TN));
 
     matmul_kernel<<<grid_dim, block_dim>>>(output_raw, input1_raw, input2_raw,
                                            m, n, k, broadcast);
@@ -420,9 +401,9 @@ void transpose(Array *output, const Array *input) {
              "ops::transpose: shape mismatch between input and output");
 
     // Launch kernels
-    dim3 grid_dim(utils::div_ceil(n, TILE_DIM), utils::div_ceil(m, TILE_DIM),
+    dim3 grid_dim(utils::div_ceil(n, XPOSE_BN), utils::div_ceil(m, XPOSE_BN),
                   batch_size);
-    dim3 block_dim(TILE_DIM, TILE_DIM);
+    dim3 block_dim(XPOSE_BN, XPOSE_BM);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());

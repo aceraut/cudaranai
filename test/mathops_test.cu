@@ -1,4 +1,5 @@
 #include "common.cuh"
+#include "initializer.cuh"
 #include "test_utils.cuh"
 
 #include <iostream>
@@ -100,6 +101,21 @@ void test_func_transpose(void) {
     std::cout << "test_func_transpose: Passed" << std::endl;
 }
 
+void test_func_transpose2(void) {
+    Array a({1, 38, 37});
+    Initializer *init = new XavierUniform;
+    init->initialize(&a, 0.1, 0.8);
+    delete init;
+
+    print_vec(a.get_vec());
+    Array res({1, 37, 38});
+
+    ops::transpose(&res, &a);
+    print_vec(res.get_vec());
+
+    std::cout << "test_func_transpose2: DIY" << std::endl;
+}
+
 void test_func_sum(void) {
     // A = [[[1, 2],
     //       [1, 3],
@@ -172,6 +188,7 @@ int main(void) {
     test_func_log();
     test_func_matmul();
     test_func_transpose();
+    test_func_transpose2();
     test_func_sum();
     test_func_mean();
 }

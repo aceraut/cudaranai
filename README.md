@@ -12,7 +12,7 @@ Other dependencies include Thrust and cuRAND libraries (which are probably
 shipped along with the compiler).
 
 ```bash
-git clone --branch main https://github.com/ceilight/cudaranai.git
+git clone --branch stable https://github.com/ceilight/cudaranai.git
 cd cudaranai
 mkdir build
 cd build

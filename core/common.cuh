@@ -15,18 +15,21 @@
 namespace nnv2 {
 
 // Constants
-constexpr int BLOCK_SIZE = 256;
 constexpr float EPS = 1e-8;
 
-// Used in matmul_lvl1 and transpose kernels
-constexpr int TILE_DIM = 32;
-
 // Used in matmul kernel
-constexpr int BM = 128;
-constexpr int BN = 128;
-constexpr int BK = 8;
-constexpr int TM = 8;
-constexpr int TN = 8;
+constexpr int MMUL_BM = 128;
+constexpr int MMUL_BN = 128;
+constexpr int MMUL_BK = 8;
+constexpr int MMUL_TM = 8;
+constexpr int MMUL_TN = 8;
+
+// Used in transpose kernel
+constexpr int XPOSE_BM = 8;
+constexpr int XPOSE_BN = 32;
+
+// Used in other kernels
+constexpr int BLOCK_SIZE = 256;
 
 // Type definitions
 using VecType = thrust::device_vector<float>;
