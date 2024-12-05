@@ -111,7 +111,11 @@ __global__ void matmul_kernel(float *output, const float *input1,
 
 __global__ void transpose_kernel(float *output, const float *input, int m,
                                  int n) {
-    __shared__ float tile[XPOSE_BN][XPOSE_BN + 1];
+    __shared__ float input_tile[XPOSE_BN][XPOSE_BN + 1];
+
+    int batch_idx = blockIdx.z;
+    input += batch_idx * m * n;
+    output += batch_idx * n * m;
 
     int bx = blockIdx.y;
     int by = blockIdx.x;
@@ -121,47 +125,12 @@ __global__ void transpose_kernel(float *output, const float *input, int m,
     int x = bx * XPOSE_BN + tx;
     int y = by * XPOSE_BN + ty;
 
-    for (int row_offset = 0; row_offset < XPOSE_BN; row_offset += XPOSE_BM) {
-        if (y < n && row_offset + x < m) {
-            tile[row_offset + tx][ty] = input[(row_offset + x) * n + y];
-        }
-    }
-
-    __syncthreads();
-
-    // Calculate the transposed output position
-    x = by * XPOSE_BN + tx;
-    y = bx * XPOSE_BN + ty;
-
-    for (int row_offset = 0; row_offset < XPOSE_BN; row_offset += XPOSE_BM) {
-        if (y < m && row_offset + x < n) {
-            output[(row_offset + x) * m + y] = tile[ty][row_offset + tx];
-        }
+    if (x < m && y < n) {
+        input_tile[tx][ty] = input[x * n + y];
+        __syncthreads();
+        output[y * m + x] = input_tile[tx][ty];
     }
 }
-
-// __global__ void transpose_kernel(float *output, const float *input, int m,
-//                                  int n) {
-//     __shared__ float input_tile[XPOSE_BN][XPOSE_BN + 1];
-
-//     int batch_idx = blockIdx.z;
-//     input += batch_idx * m * n;
-//     output += batch_idx * n * m;
-
-//     int bx = blockIdx.y;
-//     int by = blockIdx.x;
-//     int tx = threadIdx.y;
-//     int ty = threadIdx.x;
-
-//     int x = bx * XPOSE_BN + tx;
-//     int y = by * XPOSE_BN + ty;
-
-//     if (x < m && y < n) {
-//         input_tile[tx][ty] = input[x * n + y];
-//         __syncthreads();
-//         output[y * m + x] = input_tile[tx][ty];
-//     }
-// }
 
 __global__ void sum_kernel(int size, float *output, const float *input,
                            int axis_size, int stride) {
@@ -403,7 +372,7 @@ void transpose(Array *output, const Array *input) {
     // Launch kernels
     dim3 grid_dim(utils::div_ceil(n, XPOSE_BN), utils::div_ceil(m, XPOSE_BN),
                   batch_size);
-    dim3 block_dim(XPOSE_BN, XPOSE_BM);
+    dim3 block_dim(XPOSE_BN, XPOSE_BN);
 
     float *output_raw = RAW_PTR(output->get_vec());
     const float *input_raw = RAW_PTR(input->get_vec());
