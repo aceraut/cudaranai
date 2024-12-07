@@ -47,30 +47,30 @@ using Param = std::pair<Array *, Array *>;
 // Array object similar to numpy array, implemented in array.cu
 class Array {
 public:
-    explicit Array(const ShapeType &_shape);
-    explicit Array(const ShapeType &_shape, float value);
-    explicit Array(const ShapeType &_shape, const VecType &_vec);
+  explicit Array(const ShapeType &_shape);
+  explicit Array(const ShapeType &_shape, float value);
+  explicit Array(const ShapeType &_shape, const VecType &_vec);
 
-    Array(const Array &other);
-    Array(Array &&other);
-    Array &operator=(const Array &other);
-    Array &operator=(Array &&other);
+  Array(const Array &other);
+  Array(Array &&other);
+  Array &operator=(const Array &other);
+  Array &operator=(Array &&other);
 
-    void reshape(const ShapeType &_shape);
-    void resize(const ShapeType &_shape);
+  void reshape(const ShapeType &_shape);
+  void resize(const ShapeType &_shape);
 
-    void zero();
+  void zero();
 
-    VecType &get_vec() { return vec; }
-    const VecType &get_vec() const { return vec; }
+  VecType &get_vec() { return vec; }
+  const VecType &get_vec() const { return vec; }
 
-    const ShapeType &get_shape() const { return shape; }
+  const ShapeType &get_shape() const { return shape; }
 
 private:
-    void check_shape();
+  void check_shape();
 
-    VecType vec;
-    ShapeType shape;
+  VecType vec;
+  ShapeType shape;
 };
 
 // Helper functions, implemented in utils.cu.
@@ -83,8 +83,8 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 // objects, and these functions may be called multiple times when the training
 // data is large, it's more efficient to cache these temporary Array objects
 // instead of creating new ones for each call.
-void set_array_cache(ArrayMap &map, std::string key,
-                     const std::vector<int> &shape);
+void set_array_cache(
+    ArrayMap &map, std::string key, const std::vector<int> &shape);
 
 // Calculates rounded up decimal quotient of two integers
 int div_ceil(int a, int b);
@@ -120,8 +120,8 @@ void log(Array *output, const Array *input);
 // `broadcast` tells the function which input array needs replicating to match
 // with the other input's shape constraints. If broadcast is 0, no replication
 // is needed.
-void matmul(Array *output, const Array *input1, const Array *input2,
-            int broadcast = 0);
+void matmul(
+    Array *output, const Array *input1, const Array *input2, int broadcast = 0);
 
 // Matrix transpose
 void transpose(Array *output, const Array *input);
@@ -140,29 +140,29 @@ void mean(Array *output, const Array *input, int axis, bool reduce = true);
 
 // Assertion macros
 #define CHECK_EQ(val1, val2, message)                                          \
-    do {                                                                       \
-        if ((val1) != (val2)) {                                                \
-            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
-                      << std::endl;                                            \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+  do {                                                                         \
+    if ((val1) != (val2)) {                                                    \
+      std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)           \
+                << std::endl;                                                  \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 
 #define CHECK_COND(statement, message)                                         \
-    do {                                                                       \
-        if (!(statement)) {                                                    \
-            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
-                      << std::endl;                                            \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+  do {                                                                         \
+    if (!(statement)) {                                                        \
+      std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)           \
+                << std::endl;                                                  \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 
 // Macro used to check for errors after a CUDA kernel call
 #define CUDA_CHECK(statement)                                                  \
-    do {                                                                       \
-        cudaError_t error = statement;                                         \
-        CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));               \
-    } while (0)
+  do {                                                                         \
+    cudaError_t error = statement;                                             \
+    CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));                   \
+  } while (0)
 
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
 
@@ -178,7 +178,7 @@ void mean(Array *output, const Array *input, int axis, bool reduce = true);
 // Reference:
 // https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
 #define CUDA_GRID_STRIDE_LOOP(i, n)                                            \
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                 \
-         i += gridDim.x * blockDim.x)
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                   \
+       i += gridDim.x * blockDim.x)
 
 } // namespace nnv2
