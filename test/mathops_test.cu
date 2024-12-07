@@ -104,7 +104,7 @@ void test_func_transpose(void) {
 void test_func_transpose2(void) {
     Array a({1, 38, 37});
     Initializer *init = new XavierUniform;
-    init->initialize(&a, 0.1, 0.8);
+    init->initialize(&a, 2, 15);
     delete init;
 
     print_vec(a.get_vec());

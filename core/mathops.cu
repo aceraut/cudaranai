@@ -111,7 +111,7 @@ __global__ void matmul_kernel(float *output, const float *input1,
 
 __global__ void transpose_kernel(float *output, const float *input, int m,
                                  int n) {
-    __shared__ float input_tile[XPOSE_BN][XPOSE_BN + 1];
+    __shared__ float tile[XPOSE_BN][XPOSE_BN];
 
     int batch_idx = blockIdx.z;
     input += batch_idx * m * n;
@@ -126,9 +126,9 @@ __global__ void transpose_kernel(float *output, const float *input, int m,
     int y = by * XPOSE_BN + ty;
 
     if (x < m && y < n) {
-        input_tile[tx][ty] = input[x * n + y];
+        tile[tx][ty] = input[x * n + y];
         __syncthreads();
-        output[y * m + x] = input_tile[tx][ty];
+        output[y * m + x] = tile[tx][ty];
     }
 }
 
