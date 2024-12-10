@@ -352,8 +352,16 @@ transpose_kernel(float *output, const float *input, int m, int n) {
   input += batch_idx * m * n;
   output += batch_idx * n * m;
 
-  int bx = blockIdx.y;
-  int by = blockIdx.x;
+  int bx, by;
+  if (m == n) {
+    bx = blockIdx.x;
+    by = (blockIdx.x + blockIdx.y) % gridDim.x;
+  } else {
+    int bid = blockIdx.y * gridDim.x + blockIdx.x;
+    bx = bid % gridDim.y;
+    by = ((bid / gridDim.y) + bx) % gridDim.x;
+  }
+
   int tx = threadIdx.y;
   int ty = threadIdx.x;
 
