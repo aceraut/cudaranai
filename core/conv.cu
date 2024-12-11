@@ -180,7 +180,11 @@ void conv_forward(
 }
 
 __global__ void conv_forward_bias_kernel(
-    int size, float *output, const float *bias, int im_stride, int out_feats) {
+    int size,
+    float *output,
+    const float *bias,
+    int im_stride,
+    int out_feats) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     int bias_idx = (idx / im_stride) % out_feats;
     output[idx] += bias[bias_idx];
@@ -435,7 +439,9 @@ void conv_backward(
 }
 
 void conv_backward_bias(
-    Array *bias_grad, const Array *output_grad, ArrayMap &cache) {
+    Array *bias_grad,
+    const Array *output_grad,
+    ArrayMap &cache) {
   const ShapeType &bias_grad_shape = bias_grad->get_shape();
   const ShapeType &output_grad_shape = output_grad->get_shape();
 

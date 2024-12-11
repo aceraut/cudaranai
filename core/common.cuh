@@ -17,17 +17,6 @@ namespace nnv2 {
 // Constants
 constexpr float EPS = 1e-8;
 
-// Used in matmul kernel
-constexpr int MMUL_BM = 128;
-constexpr int MMUL_BN = 128;
-constexpr int MMUL_BK = 8;
-constexpr int MMUL_TM = 8;
-constexpr int MMUL_TN = 8;
-
-// Used in transpose kernel
-constexpr int XPOSE_BM = 8;
-constexpr int XPOSE_BN = 32;
-
 // Used in other kernels
 constexpr int BLOCK_SIZE = 256;
 
@@ -84,7 +73,9 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
 // data is large, it's more efficient to cache these temporary Array objects
 // instead of creating new ones for each call.
 void set_array_cache(
-    ArrayMap &map, std::string key, const std::vector<int> &shape);
+    ArrayMap &map,
+    std::string key,
+    const std::vector<int> &shape);
 
 // Calculates rounded up decimal quotient of two integers
 int div_ceil(int a, int b);
@@ -121,7 +112,10 @@ void log(Array *output, const Array *input);
 // with the other input's shape constraints. If broadcast is 0, no replication
 // is needed.
 void matmul(
-    Array *output, const Array *input1, const Array *input2, int broadcast = 0);
+    Array *output,
+    const Array *input1,
+    const Array *input2,
+    int broadcast = 0);
 
 // Matrix transpose
 void transpose(Array *output, const Array *input);

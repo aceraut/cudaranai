@@ -29,7 +29,9 @@ void relu_forward(Array *output, const Array *input) {
 }
 
 void relu_backward(
-    Array *input_grad, const Array *output_grad, const Array *input) {
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input) {
   VecType &input_grad_vec = input_grad->get_vec();
   const VecType &output_grad_vec = output_grad->get_vec();
   const VecType &input_vec = input->get_vec();
@@ -79,7 +81,9 @@ void sigmoid_forward(Array *output, const Array *input) {
 }
 
 void sigmoid_backward(
-    Array *input_grad, const Array *output_grad, const Array *input) {
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input) {
   VecType &input_grad_vec = input_grad->get_vec();
   const VecType &output_grad_vec = output_grad->get_vec();
   const VecType &input_vec = input->get_vec();
@@ -133,7 +137,9 @@ void tanh_forward(Array *output, const Array *input) {
 }
 
 void tanh_backward(
-    Array *input_grad, const Array *output_grad, const Array *input) {
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input) {
   VecType &input_grad_vec = input_grad->get_vec();
   const VecType &output_grad_vec = output_grad->get_vec();
   const VecType &input_vec = input->get_vec();
@@ -175,7 +181,10 @@ void Tanh::backward() {
 // This implementation rescales the input vectors by subtracting the maxinum
 // value from every vector element to avoid overflow when calling exp().
 __global__ void softmax_forward_kernel(
-    int size, float *output, const float *input, int stride) {
+    int size,
+    float *output,
+    const float *input,
+    int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     input += idx * stride;
     output += idx * stride;
@@ -249,7 +258,10 @@ void Softmax::backward() {
 // This implementation rescales the input vectors by subtracting the maxinum
 // value from every vector element to avoid overflow when calling exp().
 __global__ void log_softmax_forward_kernel(
-    int size, float *output, const float *input, int stride) {
+    int size,
+    float *output,
+    const float *input,
+    int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     input += idx * stride;
     output += idx * stride;
@@ -335,7 +347,9 @@ __global__ void log_softmax_backward_kernel(
 }
 
 void log_softmax_backward(
-    Array *input_grad, const Array *output_grad, const Array *input) {
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input) {
   const ShapeType &input_grad_shape = input_grad->get_shape();
   const ShapeType &output_grad_shape = output_grad->get_shape();
   const ShapeType &input_shape = input->get_shape();

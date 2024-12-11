@@ -11,7 +11,10 @@ namespace nnv2 {
 // where P is the output of the forward phase of the classifier with Softmax as
 // the final layer and Y is the actual result in one-hot encoding.
 void cross_entropy_loss(
-    Array *output, const Array *input, const Array *y, ArrayMap &cache) {
+    Array *output,
+    const Array *input,
+    const Array *y,
+    ArrayMap &cache) {
   const ShapeType &input_shape = input->get_shape();
 
   CHECK_EQ(
@@ -35,7 +38,9 @@ void cross_entropy_loss(
 }
 
 void cross_entropy_loss_backward(
-    Array *input_grad, const Array *input, const Array *y) {
+    Array *input_grad,
+    const Array *input,
+    const Array *y) {
   CHECK_EQ(
       input->get_shape(),
       input_grad->get_shape(),
@@ -72,7 +77,10 @@ void CrossEntropyLoss::backward() {
 // where P is the output of the forward phase of the classifier with LogSoftmax
 // as the final layer and Y is the actual labels in one-hot encoding.
 void nll_loss(
-    Array *output, const Array *input, const Array *y, ArrayMap &cache) {
+    Array *output,
+    const Array *input,
+    const Array *y,
+    ArrayMap &cache) {
   const ShapeType &input_shape = input->get_shape();
 
   CHECK_EQ(

@@ -35,12 +35,20 @@ public:
 
 // Helper functions
 void cross_entropy_loss(
-    Array *output, const Array *input, const Array *y, ArrayMap &cache);
+    Array *output,
+    const Array *input,
+    const Array *y,
+    ArrayMap &cache);
 void cross_entropy_loss_backward(
-    Array *input_grad, const Array *input, const Array *y);
+    Array *input_grad,
+    const Array *input,
+    const Array *y);
 
 void nll_loss(
-    Array *output, const Array *input, const Array *y, ArrayMap &cache);
+    Array *output,
+    const Array *input,
+    const Array *y,
+    ArrayMap &cache);
 void nll_loss_backward(Array *input_grad, const Array *y);
 
 } // namespace nnv2

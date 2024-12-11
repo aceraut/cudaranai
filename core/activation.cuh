@@ -71,20 +71,28 @@ public:
 // Helper functions
 void relu_forward(Array *output, const Array *input);
 void relu_backward(
-    Array *input_grad, const Array *output_grad, const Array *input);
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input);
 
 void sigmoid_forward(Array *output, const Array *input);
 void sigmoid_backward(
-    Array *input_grad, const Array *output_grad, const Array *input);
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input);
 
 void tanh_forward(Array *output, const Array *input);
 void tanh_backward(
-    Array *input_grad, const Array *output_grad, const Array *input);
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input);
 
 void softmax_forward(Array *output, const Array *input);
 
 void log_softmax_forward(Array *output, const Array *input);
 void log_softmax_backward(
-    Array *input_grad, const Array *output_grad, const Array *input);
+    Array *input_grad,
+    const Array *output_grad,
+    const Array *input);
 
 } // namespace nnv2

@@ -37,7 +37,10 @@ void linear_forward(Array *output, const Array *input, const Array *filter) {
 }
 
 __global__ void linear_forward_bias_kernel(
-    int size, float *output, const float *bias, int out_feats) {
+    int size,
+    float *output,
+    const float *bias,
+    int out_feats) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     int bias_idx = idx % out_feats;
     output[idx] += bias[bias_idx];

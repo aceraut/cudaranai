@@ -99,6 +99,8 @@ void conv_backward(
     ArrayMap &cache);
 
 void conv_backward_bias(
-    Array *bias_grad, const Array *output_grad, ArrayMap &cache);
+    Array *bias_grad,
+    const Array *output_grad,
+    ArrayMap &cache);
 
 } // namespace nnv2

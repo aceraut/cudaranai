@@ -21,7 +21,9 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape) {
 
 // Helper function for initializing Array object from an ArrayMap cache
 void set_array_cache(
-    ArrayMap &map, std::string key, const std::vector<int> &shape) {
+    ArrayMap &map,
+    std::string key,
+    const std::vector<int> &shape) {
   if (map.find(key) == map.end()) {
     map[key] = std::make_unique<Array>(shape);
   }

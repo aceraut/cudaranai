@@ -13,9 +13,10 @@ public:
 
 private:
   void read_images(
-      std::vector<std::vector<float>> &output, std::string filename) override;
-  void read_labels(
-      std::vector<unsigned char> &output, std::string filename) override;
+      std::vector<std::vector<float>> &output,
+      std::string filename) override;
+  void read_labels(std::vector<unsigned char> &output, std::string filename)
+      override;
 
   void rescale_images(std::vector<std::vector<float>> &images);
   void standardize_images(std::vector<std::vector<float>> &images);

@@ -48,7 +48,8 @@ static unsigned reverse_int(unsigned i) {
 }
 
 void Mnist::read_images(
-    std::vector<std::vector<float>> &output, std::string filename) {
+    std::vector<std::vector<float>> &output,
+    std::string filename) {
   std::ifstream file(filename, std::ios::binary);
   if (file.is_open()) {
     unsigned magic_number = 0;
@@ -94,7 +95,8 @@ void Mnist::read_images(
 }
 
 void Mnist::read_labels(
-    std::vector<unsigned char> &output, std::string filename) {
+    std::vector<unsigned char> &output,
+    std::string filename) {
   std::ifstream file(filename, std::ios::binary);
   if (file.is_open()) {
     unsigned magic_number = 0;

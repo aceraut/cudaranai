@@ -30,7 +30,8 @@ void print_vec(const std::vector<T> &vec) {
 
 template <typename T>
 void check_equal_vecs(
-    const thrust::device_vector<T> &u, const std::vector<T> &v) {
+    const thrust::device_vector<T> &u,
+    const std::vector<T> &v) {
   assert(u.size() == v.size() && "size mismatch between vectors");
   for (int i = 0; i < u.size(); i++) {
     assert(std::abs(u[i] - v[i]) < ERROR_MARGIN && "Incorrect element");
