@@ -39,6 +39,7 @@ void cross_entropy_loss(
     const Array *input,
     const Array *y,
     ArrayMap &cache);
+
 void cross_entropy_loss_backward(
     Array *input_grad,
     const Array *input,
@@ -49,6 +50,7 @@ void nll_loss(
     const Array *input,
     const Array *y,
     ArrayMap &cache);
+
 void nll_loss_backward(Array *input_grad, const Array *y);
 
 } // namespace nnv2

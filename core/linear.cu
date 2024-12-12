@@ -2,7 +2,6 @@
 #include "linear.cuh"
 
 #include <utility>
-#include <vector>
 
 #include <cuda_runtime.h>
 

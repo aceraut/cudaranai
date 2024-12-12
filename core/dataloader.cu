@@ -2,8 +2,6 @@
 #include "dataloader.cuh"
 
 #include <algorithm>
-#include <iostream>
-#include <vector>
 
 #include <thrust/copy.h>
 

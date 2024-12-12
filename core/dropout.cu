@@ -4,7 +4,6 @@
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
-#include <thrust/device_vector.h>
 
 namespace nnv2 {
 
@@ -29,7 +28,7 @@ void dropout_forward(
     Array *output,
     const Array *input,
     float drop_rate,
-    thrust::device_vector<char> &mask) {
+    VecType<char> &mask) {
   const ShapeType &output_shape = output->get_shape();
   const ShapeType &input_shape = input->get_shape();
 
@@ -69,7 +68,7 @@ void dropout_backward(
     Array *input_grad,
     const Array *output_grad,
     float drop_rate,
-    const thrust::device_vector<char> &mask) {
+    const VecType<char> &mask) {
   const ShapeType &input_grad_shape = input_grad->get_shape();
   const ShapeType &output_grad_shape = output_grad->get_shape();
 

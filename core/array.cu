@@ -20,7 +20,7 @@ Array::Array(const ShapeType &_shape, float _value) : shape(_shape) {
   vec.resize(size, _value);
 }
 
-Array::Array(const ShapeType &_shape, const VecType &_vec)
+Array::Array(const ShapeType &_shape, const VecType<float> &_vec)
     : shape(_shape), vec(_vec.begin(), _vec.end()) {
   check_shape();
 }

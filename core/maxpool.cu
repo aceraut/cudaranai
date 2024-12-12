@@ -3,7 +3,6 @@
 
 #include <cfloat>
 #include <cmath>
-#include <vector>
 
 #include <cuda_runtime.h>
 
@@ -71,7 +70,7 @@ __global__ void maxpool_forward_kernel(
 void maxpool_forward(
     Array *output,
     const Array *input,
-    thrust::device_vector<int> &indices,
+    VecType<int> &indices,
     int pad_h,
     int pad_w,
     int filter_h,
@@ -151,7 +150,7 @@ __global__ void maxpool_backward_kernel(
 void maxpool_backward(
     Array *input_grad,
     const Array *output_grad,
-    const thrust::device_vector<int> &indices,
+    const VecType<int> &indices,
     int pad_h,
     int pad_w,
     int filter_h,

@@ -136,6 +136,7 @@ __global__ void top1_accuracy_kernel(
         pred_label = i;
       }
     }
+
     // Find actual label
     for (int i = 0; i < label_stride; i++) {
       if (y[i] == 1) {
@@ -143,6 +144,7 @@ __global__ void top1_accuracy_kernel(
         break;
       }
     }
+
     is_accurate[idx] = (pred_label == y_label ? 1 : 0);
   }
 }

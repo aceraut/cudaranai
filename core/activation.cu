@@ -13,8 +13,8 @@
 namespace nnv2 {
 
 void relu_forward(Array *output, const Array *input) {
-  VecType &output_vec = output->get_vec();
-  const VecType &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
@@ -32,9 +32,9 @@ void relu_backward(
     Array *input_grad,
     const Array *output_grad,
     const Array *input) {
-  VecType &input_grad_vec = input_grad->get_vec();
-  const VecType &output_grad_vec = output_grad->get_vec();
-  const VecType &input_vec = input->get_vec();
+  VecType<float> &input_grad_vec = input_grad->get_vec();
+  const VecType<float> &output_grad_vec = output_grad->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
 
   CHECK_EQ(
       input_grad_vec.size(),
@@ -65,8 +65,8 @@ void ReLU::backward() {
 }
 
 void sigmoid_forward(Array *output, const Array *input) {
-  VecType &output_vec = output->get_vec();
-  const VecType &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
@@ -84,9 +84,9 @@ void sigmoid_backward(
     Array *input_grad,
     const Array *output_grad,
     const Array *input) {
-  VecType &input_grad_vec = input_grad->get_vec();
-  const VecType &output_grad_vec = output_grad->get_vec();
-  const VecType &input_vec = input->get_vec();
+  VecType<float> &input_grad_vec = input_grad->get_vec();
+  const VecType<float> &output_grad_vec = output_grad->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
 
   CHECK_EQ(
       input_grad_vec.size(),
@@ -121,8 +121,8 @@ void Sigmoid::backward() {
 }
 
 void tanh_forward(Array *output, const Array *input) {
-  VecType &output_vec = output->get_vec();
-  const VecType &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
@@ -140,9 +140,9 @@ void tanh_backward(
     Array *input_grad,
     const Array *output_grad,
     const Array *input) {
-  VecType &input_grad_vec = input_grad->get_vec();
-  const VecType &output_grad_vec = output_grad->get_vec();
-  const VecType &input_vec = input->get_vec();
+  VecType<float> &input_grad_vec = input_grad->get_vec();
+  const VecType<float> &output_grad_vec = output_grad->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
 
   CHECK_EQ(
       input_grad_vec.size(),
@@ -221,17 +221,42 @@ void softmax_forward(Array *output, const Array *input) {
       input_shape,
       "softmax_forward: shape mismatch between input and output");
 
+  float *output_raw = RAW_PTR(output->get_vec());
+  const float *input_raw = RAW_PTR(input->get_vec());
+
   int batch_size = input_shape[0];
   int batch_stride = std::accumulate(
       input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
-  int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
-  float *output_raw = RAW_PTR(output->get_vec());
-  const float *input_raw = RAW_PTR(input->get_vec());
+  int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
   softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
       batch_size, output_raw, input_raw, batch_stride);
   CUDA_POST_KERNEL_CHECK;
+}
+
+void softmax_backward(Array *input_grad, const Array *output_grad) {
+  const ShapeType &input_grad_shape = input_grad->get_shape();
+  const ShapeType &output_grad_shape = output_grad->get_shape();
+
+  CHECK_EQ(
+      input_grad_shape.size(),
+      2,
+      "softmax_backward: input_grad is not 2 dimensional");
+  CHECK_EQ(
+      output_grad_shape.size(),
+      2,
+      "softmax_backward: output_grad is not 2 dimensional");
+
+  CHECK_EQ(
+      input_grad_shape,
+      output_grad_shape,
+      "softmax_backward: shape mismatch between output grad and input grad");
+
+  thrust::copy(
+      output_grad->get_vec().begin(),
+      output_grad->get_vec().end(),
+      input_grad->get_vec().begin());
 }
 
 void Softmax::forward() {
@@ -243,13 +268,7 @@ void Softmax::forward() {
 void Softmax::backward() {
   const Array *output_grad = next->get_grad();
   utils::set_array_ptr(grad, output_grad->get_shape());
-
-  // Backpropagation at Softmax layer involves only copying the output
-  // gradient to the input gradient.
-  thrust::copy(
-      output_grad->get_vec().begin(),
-      output_grad->get_vec().end(),
-      grad->get_vec().begin());
+  softmax_backward(grad.get(), output_grad);
 }
 
 // Applies LogSoftmax function to a batch of vectors. LogSoftmax is defined as:
@@ -298,13 +317,14 @@ void log_softmax_forward(Array *output, const Array *input) {
       input_shape,
       "log_softmax_forward: shape mismatch between input and output");
 
+  const float *input_raw = RAW_PTR(input->get_vec());
+  float *output_raw = RAW_PTR(output->get_vec());
+
   int batch_size = input_shape[0];
   int batch_stride = std::accumulate(
       input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
-  int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
-  const float *input_raw = RAW_PTR(input->get_vec());
-  float *output_raw = RAW_PTR(output->get_vec());
+  int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
   log_softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
       batch_size, output_raw, input_raw, batch_stride);
@@ -380,11 +400,12 @@ void log_softmax_backward(
   int batch_size = input_shape[0];
   int batch_stride = std::accumulate(
       input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
-  int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
   float *input_grad_raw = RAW_PTR(input_grad->get_vec());
   const float *output_grad_raw = RAW_PTR(output_grad->get_vec());
   const float *input_raw = RAW_PTR(input->get_vec());
+
+  int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
   log_softmax_backward_kernel<<<grid_size, BLOCK_SIZE>>>(
       batch_size, input_grad_raw, output_grad_raw, input_raw, batch_stride);

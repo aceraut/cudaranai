@@ -8,7 +8,7 @@ namespace nnv2 {
 namespace utils {
 
 // Helper function for initializing Array object inside smart pointer
-void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape) {
+void set_array_ptr(std::unique_ptr<Array> &ptr, const ShapeType &shape) {
   if (ptr.get() == nullptr) {
     ptr.reset(new Array(shape));
   } else {
@@ -20,10 +20,7 @@ void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape) {
 }
 
 // Helper function for initializing Array object from an ArrayMap cache
-void set_array_cache(
-    ArrayMap &map,
-    std::string key,
-    const std::vector<int> &shape) {
+void set_array_cache(ArrayMap &map, std::string key, const ShapeType &shape) {
   if (map.find(key) == map.end()) {
     map[key] = std::make_unique<Array>(shape);
   }

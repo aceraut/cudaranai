@@ -1,23 +1,22 @@
 #include "common.cuh"
-#include "cuda/arithmetic.cuh"
-#include "cuda/matmul.cuh"
-#include "cuda/mean.cuh"
-#include "cuda/sum.cuh"
-#include "cuda/transpose.cuh"
 
 #include <cmath>
 #include <functional>
 #include <numeric>
 #include <vector>
 
-namespace nnv2 {
+#include <cuda_runtime.h>
+#include <thrust/functional.h>
+#include <thrust/transform.h>
 
+namespace nnv2 {
 namespace ops {
 
+// Addition
 void add(Array *output, const Array *input1, const Array *input2) {
-  const VecType &input1_vec = input1->get_vec();
-  const VecType &input2_vec = input2->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input1_vec = input1->get_vec();
+  const VecType<float> &input2_vec = input2->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       input1_vec.size(),
@@ -28,25 +27,35 @@ void add(Array *output, const Array *input1, const Array *input2) {
       input1_vec.size(),
       "ops::add: size mismatched between input and output");
 
-  cuda::add(output_vec, input1_vec, input2_vec);
+  thrust::transform(
+      input1_vec.begin(),
+      input1_vec.end(),
+      input2_vec.begin(),
+      output_vec.begin(),
+      thrust::plus<float>());
 }
 
 void add(Array *output, const Array *input, float value) {
-  const VecType &input_vec = input->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
       input_vec.size(),
       "ops::add: size mismatch between input and output");
 
-  cuda::add(output_vec, input_vec, value);
+  thrust::transform(
+      input_vec.begin(),
+      input_vec.end(),
+      output_vec.begin(),
+      [value] __device__(float x) { return x + value; });
 }
 
+// Subtraction
 void subtract(Array *output, const Array *input1, const Array *input2) {
-  const VecType &input1_vec = input1->get_vec();
-  const VecType &input2_vec = input2->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input1_vec = input1->get_vec();
+  const VecType<float> &input2_vec = input2->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       input1_vec.size(),
@@ -57,25 +66,35 @@ void subtract(Array *output, const Array *input1, const Array *input2) {
       input1_vec.size(),
       "ops::subtract: size mismatch between input and outputs");
 
-  cuda::subtract(output_vec, input1_vec, input2_vec);
+  thrust::transform(
+      input1_vec.begin(),
+      input1_vec.end(),
+      input2_vec.begin(),
+      output_vec.begin(),
+      thrust::minus<float>());
 }
 
 void subtract(Array *output, const Array *input, float value) {
-  const VecType &input_vec = input->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
       input_vec.size(),
       "ops::subtract: size mismatch between input and output");
 
-  cuda::subtract(output_vec, input_vec, value);
+  thrust::transform(
+      input_vec.begin(),
+      input_vec.end(),
+      output_vec.begin(),
+      [value] __device__(float x) { return x - value; });
 }
 
+// Element-wise multiplication
 void multiply(Array *output, const Array *input1, const Array *input2) {
-  const VecType &input1_vec = input1->get_vec();
-  const VecType &input2_vec = input2->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input1_vec = input1->get_vec();
+  const VecType<float> &input2_vec = input2->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       input1_vec.size(),
@@ -86,25 +105,35 @@ void multiply(Array *output, const Array *input1, const Array *input2) {
       input1_vec.size(),
       "ops::multiply: size mismatch between input and outputs");
 
-  cuda::multiply(output_vec, input1_vec, input2_vec);
+  thrust::transform(
+      input1_vec.begin(),
+      input1_vec.end(),
+      input2_vec.begin(),
+      output_vec.begin(),
+      thrust::multiplies<float>());
 }
 
 void multiply(Array *output, const Array *input, float value) {
-  const VecType &input_vec = input->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
       input_vec.size(),
       "ops::multiply: size mismatch between input and output");
 
-  cuda::multiply(output_vec, input_vec, value);
+  thrust::transform(
+      input_vec.begin(),
+      input_vec.end(),
+      output_vec.begin(),
+      [value] __device__(float x) { return x * value; });
 }
 
+// Element-wise division
 void divide(Array *output, const Array *input1, const Array *input2) {
-  const VecType &input1_vec = input1->get_vec();
-  const VecType &input2_vec = input2->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input1_vec = input1->get_vec();
+  const VecType<float> &input2_vec = input2->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       input1_vec.size(),
@@ -115,19 +144,194 @@ void divide(Array *output, const Array *input1, const Array *input2) {
       input1_vec.size(),
       "ops::divide: size mismatch between input and outputs");
 
-  cuda::divide(output_vec, input1_vec, input2_vec);
+  thrust::transform(
+      input1_vec.begin(),
+      input1_vec.end(),
+      input2_vec.begin(),
+      output_vec.begin(),
+      thrust::divides<float>());
 }
 
+// Logarithm operation
 void log(Array *output, const Array *input) {
-  const VecType &input_vec = input->get_vec();
-  VecType &output_vec = output->get_vec();
+  const VecType<float> &input_vec = input->get_vec();
+  VecType<float> &output_vec = output->get_vec();
 
   CHECK_EQ(
       output_vec.size(),
       input_vec.size(),
       "ops::log: size mismatch between input and output");
 
-  cuda::log(output_vec, input_vec);
+  thrust::transform(
+      input_vec.begin(),
+      input_vec.end(),
+      output_vec.begin(),
+      [] __device__(float x) { return logf(x); });
+}
+
+// Matrix multiplication
+constexpr int MMUL_LIM = 512;
+
+constexpr int MMUL1_TD = 16;
+
+constexpr int MMUL2_BM = 64;
+constexpr int MMUL2_BN = 64;
+constexpr int MMUL2_BK = 8;
+
+constexpr int MMUL2_TM = 8;
+constexpr int MMUL2_TN = 8;
+
+__global__ void matmul_kernel_v1(
+    float *output,
+    const float *input1,
+    const float *input2,
+    int m,
+    int n,
+    int k,
+    int broadcast) {
+  __shared__ float tile1[MMUL1_TD][MMUL1_TD];
+  __shared__ float tile2[MMUL1_TD][MMUL1_TD];
+
+  // Calculate offsets of the matrices
+  int batch_idx = blockIdx.z;
+  if (broadcast != 1) {
+    input1 += batch_idx * m * k;
+  }
+  if (broadcast != 2) {
+    input2 += batch_idx * k * n;
+  }
+  output += batch_idx * m * n;
+
+  int bx = blockIdx.y;
+  int by = blockIdx.x;
+  int tx = threadIdx.y;
+  int ty = threadIdx.x;
+
+  int x = bx * MMUL1_TD + tx;
+  int y = by * MMUL1_TD + ty;
+
+  // Loop over input tiles to calculate the dot value
+  float thread_output = 0.0;
+  int tile_count = (k + MMUL1_TD - 1) / MMUL1_TD;
+
+  for (int i = 0; i < tile_count; i++) {
+    tile1[tx][ty] = (x < m && i * MMUL1_TD + ty < k)
+                        ? input1[x * k + i * MMUL1_TD + ty]
+                        : 0.0;
+
+    tile2[tx][ty] = (y < n && i * MMUL1_TD + tx < k)
+                        ? input2[(i * MMUL1_TD + tx) * n + y]
+                        : 0.0;
+    __syncthreads();
+
+    for (int j = 0; j < MMUL1_TD; j++) {
+      thread_output += tile1[tx][j] * tile2[j][ty];
+    }
+    __syncthreads();
+  }
+
+  if (x < m && y < n) {
+    output[x * n + y] = thread_output;
+  }
+}
+
+__global__ void matmul_kernel_v2(
+    float *output,
+    const float *input1,
+    const float *input2,
+    int m,
+    int n,
+    int k,
+    int broadcast) {
+  __shared__ float tile1[MMUL2_BM][MMUL2_BK];
+  __shared__ float tile2[MMUL2_BK][MMUL2_BN];
+
+  float thread_output[MMUL2_TM * MMUL2_TN] = {0.0};
+  float reg1[MMUL2_TM];
+  float reg2[MMUL2_TN];
+
+  // Calculate matrix offsets
+  const int batch_idx = blockIdx.z;
+  if (broadcast != 1) {
+    input1 += batch_idx * m * k;
+  }
+  if (broadcast != 2) {
+    input2 += batch_idx * k * n;
+  }
+  output += batch_idx * m * n;
+
+  // Block offsets from matrix
+  int bx = blockIdx.y * MMUL2_BM;
+  int by = blockIdx.x * MMUL2_BN;
+
+  // Thread offsets from block
+  int tx = (threadIdx.x / (MMUL2_BN / MMUL2_TN)) * MMUL2_TM;
+  int ty = (threadIdx.x % (MMUL2_BN / MMUL2_TN)) * MMUL2_TN;
+
+  // Number of threads per block
+  int nthreads = blockDim.x;
+
+  // Strides for tile traversal
+  int win1_stride = nthreads / MMUL2_BK;
+  int win2_stride = nthreads / MMUL2_BN;
+
+  // Coordinates within tiles
+  int x_win1 = threadIdx.x / MMUL2_BK;
+  int y_win1 = threadIdx.x % MMUL2_BK;
+  int x_win2 = threadIdx.x / MMUL2_BN;
+  int y_win2 = threadIdx.x % MMUL2_BN;
+
+  for (int block_offset = 0; block_offset < k; block_offset += MMUL2_BK) {
+    int x_block, y_block, x_input, y_input;
+
+    // Load tile1 from global memory
+    for (int win_offset = 0; win_offset < MMUL2_BM; win_offset += win1_stride) {
+      x_block = x_win1 + win_offset;
+      y_block = y_win1;
+      x_input = x_block + bx;
+      y_input = y_block + block_offset;
+      tile1[x_block][y_block] =
+          (x_input < m && y_input < k) ? input1[x_input * k + y_input] : 0.0;
+    }
+
+    // Load tile2 from global memory
+    for (int win_offset = 0; win_offset < MMUL2_BK; win_offset += win2_stride) {
+      x_block = x_win2 + win_offset;
+      y_block = y_win2;
+      x_input = x_block + block_offset;
+      y_input = y_block + by;
+      tile2[x_block][y_block] =
+          (x_input < k && y_input < n) ? input2[x_input * n + y_input] : 0.0;
+    }
+    __syncthreads();
+
+    // Compute local tile products and accumulate
+    for (int i = 0; i < MMUL2_BK; i++) {
+      for (int j = 0; j < MMUL2_TM; j++) {
+        reg1[j] = tile1[tx + j][i];
+      }
+      for (int l = 0; l < MMUL2_TN; l++) {
+        reg2[l] = tile2[i][ty + l];
+      }
+      for (int j = 0; j < MMUL2_TM; j++) {
+        for (int l = 0; l < MMUL2_TN; l++) {
+          thread_output[j * MMUL2_TN + l] += reg1[j] * reg2[l];
+        }
+      }
+    }
+    __syncthreads();
+  }
+
+  // Write final output back to global memory
+  for (int j = 0; j < MMUL2_TM; j++) {
+    for (int l = 0; l < MMUL2_TN; l++) {
+      int x = bx + tx + j;
+      int y = by + ty + l;
+      if (x < m && y < n) {
+        output[x * n + y] = thread_output[j * MMUL2_TN + l];
+      }
+    }
+  }
 }
 
 // Performs matrix multiplication with two modes based on `broadcast` value:
@@ -201,8 +405,68 @@ void matmul(
   const float *input1_raw = RAW_PTR(input1->get_vec());
   const float *input2_raw = RAW_PTR(input2->get_vec());
 
-  cuda::matmul(
-      output_raw, input1_raw, input2_raw, batch_size, m, n, k, broadcast);
+  if (m <= MMUL_LIM && n <= MMUL_LIM && k <= MMUL_LIM) {
+    dim3 grid_dim(
+        utils::div_ceil(n, MMUL1_TD), utils::div_ceil(m, MMUL1_TD), batch_size);
+    dim3 block_dim(MMUL1_TD, MMUL1_TD);
+
+    matmul_kernel_v1<<<grid_dim, block_dim>>>(
+        output_raw, input1_raw, input2_raw, m, n, k, broadcast);
+  } else {
+    dim3 grid_dim(
+        utils::div_ceil(n, MMUL2_BN), utils::div_ceil(m, MMUL2_BM), batch_size);
+    dim3 block_dim((MMUL2_BM * MMUL2_BN) / (MMUL2_TM * MMUL2_TN));
+
+    matmul_kernel_v2<<<grid_dim, block_dim>>>(
+        output_raw, input1_raw, input2_raw, m, n, k, broadcast);
+  }
+
+  CUDA_POST_KERNEL_CHECK;
+}
+
+// Transpose operation
+constexpr int XPOSE_BM = 8;
+constexpr int XPOSE_BN = 32;
+
+__global__ void
+transpose_kernel(float *output, const float *input, int m, int n) {
+  __shared__ float tile[XPOSE_BN][XPOSE_BN + 1];
+
+  int batch_idx = blockIdx.z;
+  input += batch_idx * m * n;
+  output += batch_idx * n * m;
+
+  int bx, by;
+  if (m == n) {
+    bx = blockIdx.x;
+    by = (blockIdx.x + blockIdx.y) % gridDim.x;
+  } else {
+    int bid = blockIdx.y * gridDim.x + blockIdx.x;
+    bx = bid % gridDim.y;
+    by = ((bid / gridDim.y) + bx) % gridDim.x;
+  }
+
+  int tx = threadIdx.y;
+  int ty = threadIdx.x;
+
+  int x = bx * XPOSE_BN + tx;
+  int y = by * XPOSE_BN + ty;
+
+  for (int i = 0; i < XPOSE_BN; i += XPOSE_BM) {
+    if (x + i < m && y < n) {
+      tile[tx + i][ty] = input[(x + i) * n + y];
+    }
+  }
+  __syncthreads();
+
+  x = by * XPOSE_BN + tx;
+  y = bx * XPOSE_BN + ty;
+
+  for (int i = 0; i < XPOSE_BN; i += XPOSE_BM) {
+    if (x + i < n && y < m) {
+      output[(x + i) * m + y] = tile[ty][tx + i];
+    }
+  }
 }
 
 // Performs matrix tranpose. If the input has more than 2 dimensions, batch
@@ -237,7 +501,30 @@ void transpose(Array *output, const Array *input) {
   float *output_raw = RAW_PTR(output->get_vec());
   const float *input_raw = RAW_PTR(input->get_vec());
 
-  cuda::transpose(output_raw, input_raw, batch_size, m, n);
+  dim3 grid_dim(
+      utils::div_ceil(n, XPOSE_BN), utils::div_ceil(m, XPOSE_BN), batch_size);
+  dim3 block_dim(XPOSE_BN, XPOSE_BM);
+
+  transpose_kernel<<<grid_dim, block_dim>>>(output_raw, input_raw, m, n);
+  CUDA_POST_KERNEL_CHECK;
+}
+
+// Sum reduction over a dimension (or axis)
+__global__ void sum_kernel(
+    int size,
+    float *output,
+    const float *input,
+    int axis_size,
+    int stride) {
+  CUDA_GRID_STRIDE_LOOP(idx, size) {
+    int base = (idx / stride) * axis_size * stride + (idx % stride);
+
+    float value = 0;
+    for (int i = 0; i < axis_size; i++) {
+      value += input[base + i * stride];
+    }
+    output[idx] = value;
+  }
 }
 
 // Calculates sum of array elements along a given axis. The parameter `reduce`
@@ -272,7 +559,29 @@ void sum(Array *output, const Array *input, int axis, bool reduce) {
       1,
       std::multiplies<int>());
 
-  cuda::sum(output_raw, input_raw, output_size, axis_size, stride);
+  int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
+
+  sum_kernel<<<grid_size, BLOCK_SIZE>>>(
+      output_size, output_raw, input_raw, axis_size, stride);
+  CUDA_POST_KERNEL_CHECK;
+}
+
+// Mean reduction over a dimension (or axis)
+__global__ void mean_kernel(
+    int size,
+    float *output,
+    const float *input,
+    int axis_size,
+    int stride) {
+  CUDA_GRID_STRIDE_LOOP(idx, size) {
+    int base = (idx / stride) * axis_size * stride + (idx % stride);
+
+    float value = 0;
+    for (int i = 0; i < axis_size; i++) {
+      value += input[base + i * stride];
+    }
+    output[idx] = value / axis_size;
+  }
 }
 
 // Calculates mean value of array elements along a given axis. The parameter
@@ -307,7 +616,11 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
       1,
       std::multiplies<int>());
 
-  cuda::mean(output_raw, input_raw, output_size, axis_size, stride);
+  int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
+
+  mean_kernel<<<grid_size, BLOCK_SIZE>>>(
+      output_size, output_raw, input_raw, axis_size, stride);
+  CUDA_POST_KERNEL_CHECK;
 }
 
 } // namespace ops

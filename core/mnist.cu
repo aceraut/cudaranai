@@ -1,19 +1,18 @@
-// This file implements the Mnist dataset adapter.
-//
-// It provides functions for MNIST dataset import and preprocesing.
-// You can check Wikipedia for more information about MNIST dataset, best I know
-// so far from this thing is that there are 60000 samples for training and
-// 10000 more for testing.
-
 #include "common.cuh"
 #include "mnist.cuh"
 
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <numeric>
-#include <string>
 #include <vector>
+
+// This file implements the Mnist dataset adapter. It provides functions for
+// MNIST dataset import and preprocesing.
+// You can check Wikipedia for more information about MNIST dataset, best I know
+// so far from this thing is that there are 60000 samples for training and
+// 10000 more for testing.
 
 namespace nnv2 {
 

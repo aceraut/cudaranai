@@ -1,8 +1,8 @@
-// Loss layer validates the prediction results with the actual results to
-// calculate the loss value and the loss gradient for backpropagation.
-
 #include "common.cuh"
 #include "loss.cuh"
+
+// Loss layer validates the prediction results with the actual results to
+// calculate the loss value and the loss gradient for backpropagation.
 
 namespace nnv2 {
 

@@ -1,9 +1,3 @@
-// This file implements multiple Initializer classes, meant to initialize
-// parameters in a neural network.
-//
-// Further notes on these initalizers can be found here:
-// https://pytorch.org/docs/stable/nn.init.html
-
 #include "common.cuh"
 #include "initializer.cuh"
 
@@ -12,7 +6,10 @@
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
-#include <thrust/device_vector.h>
+
+// These Initializer classes are meant to initialize parameters in a neural
+// network. Further notes on initalizers can be found here:
+// https://pytorch.org/docs/stable/nn.init.html
 
 namespace nnv2 {
 
@@ -30,7 +27,7 @@ __global__ void normal_init_kernel(
   }
 }
 
-static void normal_init(VecType &vec, float s) {
+static void normal_init(VecType<float> &vec, float s) {
   float *vec_raw = RAW_PTR(vec);
   unsigned seed =
       (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();
@@ -52,7 +49,7 @@ uniform_init_kernel(int size, float *vec, float a, float b, unsigned seed) {
   }
 }
 
-static void uniform_init(VecType &vec, float r) {
+static void uniform_init(VecType<float> &vec, float r) {
   float *vec_raw = RAW_PTR(vec);
   unsigned seed =
       (unsigned)std::chrono::steady_clock::now().time_since_epoch().count();

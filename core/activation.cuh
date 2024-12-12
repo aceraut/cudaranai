@@ -88,6 +88,7 @@ void tanh_backward(
     const Array *input);
 
 void softmax_forward(Array *output, const Array *input);
+void softmax_backward(Array *input_grad, const Array *output_grad);
 
 void log_softmax_forward(Array *output, const Array *input);
 void log_softmax_backward(

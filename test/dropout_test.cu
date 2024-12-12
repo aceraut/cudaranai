@@ -16,7 +16,7 @@ void test_dropout_forward() {
   Array output({32, 1024});
   int size = 32 * 1024;
 
-  thrust::device_vector<char> mask(size);
+  VecType<char> mask(size);
 
   // drop 60% of neurons
   dropout_forward(&output, &input, 0.6, mask);

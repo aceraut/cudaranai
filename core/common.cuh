@@ -21,7 +21,8 @@ constexpr float EPS = 1e-8;
 constexpr int BLOCK_SIZE = 256;
 
 // Type definitions
-using VecType = thrust::device_vector<float>;
+template <class T>
+using VecType = thrust::device_vector<T>;
 using ShapeType = std::vector<int>;
 
 class Array;
@@ -38,7 +39,7 @@ class Array {
 public:
   explicit Array(const ShapeType &_shape);
   explicit Array(const ShapeType &_shape, float value);
-  explicit Array(const ShapeType &_shape, const VecType &_vec);
+  explicit Array(const ShapeType &_shape, const VecType<float> &_vec);
 
   Array(const Array &other);
   Array(Array &&other);
@@ -50,15 +51,15 @@ public:
 
   void zero();
 
-  VecType &get_vec() { return vec; }
-  const VecType &get_vec() const { return vec; }
+  VecType<float> &get_vec() { return vec; }
+  const VecType<float> &get_vec() const { return vec; }
 
   const ShapeType &get_shape() const { return shape; }
 
 private:
   void check_shape();
 
-  VecType vec;
+  VecType<float> vec;
   ShapeType shape;
 };
 
@@ -66,16 +67,13 @@ private:
 namespace utils {
 
 // Initializes Array object inside smart pointer
-void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
+void set_array_ptr(std::unique_ptr<Array> &ptr, const ShapeType &shape);
 
 // Since several functions in the training process require temporary Array
 // objects, and these functions may be called multiple times when the training
 // data is large, it's more efficient to cache these temporary Array objects
 // instead of creating new ones for each call.
-void set_array_cache(
-    ArrayMap &map,
-    std::string key,
-    const std::vector<int> &shape);
+void set_array_cache(ArrayMap &map, std::string key, const ShapeType &shape);
 
 // Calculates rounded up decimal quotient of two integers
 int div_ceil(int a, int b);

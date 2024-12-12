@@ -3,6 +3,7 @@
 #include "common.cuh"
 #include "layer.cuh"
 
+#include <memory>
 #include <vector>
 
 namespace nnv2 {

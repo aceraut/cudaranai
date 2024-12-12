@@ -20,7 +20,7 @@ void test_maxpool_forward() {
                              5, 4, 3, 2, 4, 5, 6, 1, 3, 6, 5, 4, 2, 1, 4, 3});
 
   Array output({2, 2, 2, 2});
-  thrust::device_vector<int> indices(16);
+  VecType<int> indices(16);
 
   maxpool_forward(&output, &input, indices, 0, 0, 2, 2, 2, 2);
   check_equal_vecs(
@@ -78,7 +78,7 @@ void test_maxpool_forward_case2() {
                              2, 2, 2, 5, 4, 3, 2, 4, 5, 6, 1, 3});
 
   Array output({2, 2, 2, 2});
-  thrust::device_vector<int> indices(16);
+  VecType<int> indices(16);
 
   maxpool_forward(&output, &input, indices, 1, 1, 2, 2, 2, 2);
   check_equal_vecs(
@@ -94,7 +94,7 @@ void test_maxpool_backward() {
                              5, 4, 3, 2, 4, 5, 6, 1, 3, 6, 5, 4, 2, 1, 4, 3});
 
   Array output({2, 2, 3, 3});
-  thrust::device_vector<int> indices(2 * 2 * 3 * 3);
+  VecType<int> indices(2 * 2 * 3 * 3);
 
   Array input_grad({2, 2, 4, 4});
   Array output_grad({2, 2, 3, 3}, {1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3,

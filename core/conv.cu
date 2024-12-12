@@ -6,7 +6,6 @@
 #include <vector>
 
 #include <cuda_runtime.h>
-#include <thrust/device_vector.h>
 
 namespace nnv2 {
 

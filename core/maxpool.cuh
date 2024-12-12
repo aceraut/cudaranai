@@ -3,10 +3,6 @@
 #include "common.cuh"
 #include "layer.cuh"
 
-#include <vector>
-
-#include <thrust/device_vector.h>
-
 namespace nnv2 {
 
 class MaxPool2D : public Layer {
@@ -30,13 +26,13 @@ private:
   int stride_h;
   int stride_w;
 
-  thrust::device_vector<int> indices;
+  VecType<int> indices;
 };
 
 void maxpool_forward(
     Array *output,
     const Array *input,
-    thrust::device_vector<int> &indices,
+    VecType<int> &indices,
     int pad_h,
     int pad_w,
     int kernel_h,
@@ -47,7 +43,7 @@ void maxpool_forward(
 void maxpool_backward(
     Array *input_grad,
     const Array *output_grad,
-    const thrust::device_vector<int> &indices,
+    const VecType<int> &indices,
     int pad_h,
     int pad_w,
     int filter_h,

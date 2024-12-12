@@ -10,8 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <thrust/device_vector.h>
-
 namespace nnv2 {
 
 class Network {
@@ -37,7 +35,7 @@ private:
   Optimizer *optimizer;
 
   // Each element denotes whether an input in a batch predicts correctly.
-  thrust::device_vector<int> is_accurate;
+  VecType<int> is_accurate;
 };
 
 } // namespace nnv2
