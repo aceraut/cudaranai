@@ -170,14 +170,16 @@ void log(Array *output, const Array *input) {
 }
 
 // Matrix multiplication
+
+// Dimension threshold to use the matmul kernel v1
 constexpr int MMUL_LIM = 512;
-
-constexpr int MMUL1_TD = 16;
-
+// Block tile dimension in the matmul kernel v1
+constexpr int MMUL1_BD = 16;
+// Block tile dimension in the matmul kernel v2
 constexpr int MMUL2_BM = 64;
 constexpr int MMUL2_BN = 64;
 constexpr int MMUL2_BK = 8;
-
+// Thread tile dimension in the matmul kernel v2
 constexpr int MMUL2_TM = 8;
 constexpr int MMUL2_TN = 8;
 
@@ -189,8 +191,8 @@ __global__ void matmul_kernel_v1(
     int n,
     int k,
     int broadcast) {
-  __shared__ float tile1[MMUL1_TD][MMUL1_TD];
-  __shared__ float tile2[MMUL1_TD][MMUL1_TD];
+  __shared__ float tile1[MMUL1_BD][MMUL1_BD];
+  __shared__ float tile2[MMUL1_BD][MMUL1_BD];
 
   // Calculate offsets of the matrices
   int batch_idx = blockIdx.z;
@@ -207,24 +209,21 @@ __global__ void matmul_kernel_v1(
   int tx = threadIdx.y;
   int ty = threadIdx.x;
 
-  int x = bx * MMUL1_TD + tx;
-  int y = by * MMUL1_TD + ty;
+  int x = bx * MMUL1_BD + tx;
+  int y = by * MMUL1_BD + ty;
 
-  // Loop over input tiles to calculate the dot value
   float thread_output = 0.0;
-  int tile_count = (k + MMUL1_TD - 1) / MMUL1_TD;
 
-  for (int i = 0; i < tile_count; i++) {
-    tile1[tx][ty] = (x < m && i * MMUL1_TD + ty < k)
-                        ? input1[x * k + i * MMUL1_TD + ty]
+  for (int block_offset = 0; block_offset < k; block_offset += MMUL1_BD) {
+    tile1[tx][ty] = (x < m && ty + block_offset < k)
+                        ? input1[x * k + ty + block_offset]
                         : 0.0;
-
-    tile2[tx][ty] = (y < n && i * MMUL1_TD + tx < k)
-                        ? input2[(i * MMUL1_TD + tx) * n + y]
+    tile2[tx][ty] = (y < n && tx + block_offset < k)
+                        ? input2[(tx + block_offset) * n + y]
                         : 0.0;
     __syncthreads();
 
-    for (int j = 0; j < MMUL1_TD; j++) {
+    for (int j = 0; j < MMUL1_BD; j++) {
       thread_output += tile1[tx][j] * tile2[j][ty];
     }
     __syncthreads();
@@ -405,10 +404,13 @@ void matmul(
   const float *input1_raw = RAW_PTR(input1->get_vec());
   const float *input2_raw = RAW_PTR(input2->get_vec());
 
+  // Select which kernel to launch based on the dimension.
+  // Kernel v1 works better on small to medium matrices, while v2 works better
+  // on large matrices.
   if (m <= MMUL_LIM && n <= MMUL_LIM && k <= MMUL_LIM) {
     dim3 grid_dim(
-        utils::div_ceil(n, MMUL1_TD), utils::div_ceil(m, MMUL1_TD), batch_size);
-    dim3 block_dim(MMUL1_TD, MMUL1_TD);
+        utils::div_ceil(n, MMUL1_BD), utils::div_ceil(m, MMUL1_BD), batch_size);
+    dim3 block_dim(MMUL1_BD, MMUL1_BD);
 
     matmul_kernel_v1<<<grid_dim, block_dim>>>(
         output_raw, input1_raw, input2_raw, m, n, k, broadcast);
@@ -420,7 +422,6 @@ void matmul(
     matmul_kernel_v2<<<grid_dim, block_dim>>>(
         output_raw, input1_raw, input2_raw, m, n, k, broadcast);
   }
-
   CUDA_POST_KERNEL_CHECK;
 }
 
@@ -436,6 +437,8 @@ transpose_kernel(float *output, const float *input, int m, int n) {
   input += batch_idx * m * n;
   output += batch_idx * n * m;
 
+  // Diagonal block reordering
+  // https://www.csd.uwo.ca/~mmorenom/HPC-Slides/Optimizing_CUDA_Code-2x2.pdf
   int bx, by;
   if (m == n) {
     bx = blockIdx.x;
@@ -452,6 +455,8 @@ transpose_kernel(float *output, const float *input, int m, int n) {
   int x = bx * XPOSE_BN + tx;
   int y = by * XPOSE_BN + ty;
 
+  // A block of threads load a grid of XPOSE_BM rows and XPOSE_BN columns into
+  // shared memory in each iteration.
   for (int i = 0; i < XPOSE_BN; i += XPOSE_BM) {
     if (x + i < m && y < n) {
       tile[tx + i][ty] = input[(x + i) * n + y];

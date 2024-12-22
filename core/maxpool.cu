@@ -143,6 +143,26 @@ __global__ void maxpool_backward_kernel(
     int pooled_index = max_indices[idx];
     float grad_value = output_grad[idx];
 
+    input_grad[pooled_index] += grad_value;
+  }
+}
+
+__global__ void maxpool_backward_atomic_kernel(
+    int size,
+    float *input_grad,
+    const float *output_grad,
+    const int *max_indices,
+    int in_stride,
+    int out_stride) {
+  CUDA_GRID_STRIDE_LOOP(idx, size) {
+    int feat_idx = blockIdx.y;
+    input_grad += feat_idx * in_stride;
+    output_grad += feat_idx * out_stride;
+    max_indices += feat_idx * out_stride;
+
+    int pooled_index = max_indices[idx];
+    float grad_value = output_grad[idx];
+
     atomicAdd(&input_grad[pooled_index], grad_value);
   }
 }
@@ -189,13 +209,25 @@ void maxpool_backward(
   const float *output_grad_raw = RAW_PTR(output_grad->get_vec());
   const int *indices_raw = RAW_PTR(indices);
 
-  maxpool_backward_kernel<<<grid_dim, BLOCK_SIZE>>>(
-      out_stride,
-      input_grad_raw,
-      output_grad_raw,
-      indices_raw,
-      in_stride,
-      out_stride);
+  // If stride dimension is the same as the filter dimension, gradient value
+  // of pooled pixels in the input can be propagated without atomic expression
+  if (filter_h == stride_h && filter_w == stride_w) {
+    maxpool_backward_kernel<<<grid_dim, BLOCK_SIZE>>>(
+        out_stride,
+        input_grad_raw,
+        output_grad_raw,
+        indices_raw,
+        in_stride,
+        out_stride);
+  } else {
+    maxpool_backward_atomic_kernel<<<grid_dim, BLOCK_SIZE>>>(
+        out_stride,
+        input_grad_raw,
+        output_grad_raw,
+        indices_raw,
+        in_stride,
+        out_stride);
+  }
   CUDA_POST_KERNEL_CHECK;
 }
 

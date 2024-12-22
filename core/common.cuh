@@ -23,6 +23,7 @@ constexpr int BLOCK_SIZE = 256;
 // Type definitions
 template <class T>
 using VecType = thrust::device_vector<T>;
+
 using ShapeType = std::vector<int>;
 
 class Array;
