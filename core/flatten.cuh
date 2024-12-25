@@ -2,8 +2,6 @@
 
 #include "layer.cuh"
 
-#include <vector>
-
 namespace nnv2 {
 
 // Flatten layer is a drop-in layer that directly transforms previous layer's
@@ -15,19 +13,19 @@ namespace nnv2 {
 
 class Flatten : public Layer {
 public:
-    Flatten() : Layer() {}
+  Flatten() : Layer() {}
 
-    void forward() override;
-    void backward() override;
+  void forward() override;
+  void backward() override;
 
-    Array *get_output() { return prev->get_output(); }
-    const Array *get_output() const { return prev->get_output(); }
+  Array *get_output() { return prev->get_output(); }
+  const Array *get_output() const { return prev->get_output(); }
 
-    Array *get_grad() { return next->get_grad(); }
-    const Array *get_grad() const { return next->get_grad(); }
+  Array *get_grad() { return next->get_grad(); }
+  const Array *get_grad() const { return next->get_grad(); }
 
 private:
-    ShapeType in_shape;
+  ShapeType in_shape;
 };
 
 } // namespace nnv2

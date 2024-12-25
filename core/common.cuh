@@ -15,12 +15,14 @@
 namespace nnv2 {
 
 // Constants
-constexpr int BLOCK_SIZE = 256;
-constexpr int TILE_DIM = 16;
 constexpr float EPS = 1e-8;
 
+// Used in other kernels
+constexpr int BLOCK_SIZE = 256;
+
 // Type definitions
-using VecType = thrust::device_vector<float>;
+template <class T> using VecType = thrust::device_vector<T>;
+
 using ShapeType = std::vector<int>;
 
 class Array;
@@ -35,47 +37,45 @@ using Param = std::pair<Array *, Array *>;
 // Array object similar to numpy array, implemented in array.cu
 class Array {
 public:
-    explicit Array(const ShapeType &_shape);
-    explicit Array(const ShapeType &_shape, float value);
-    explicit Array(const ShapeType &_shape, const VecType &_vec);
+  explicit Array(const ShapeType &_shape, float value = 0.0);
+  explicit Array(const ShapeType &_shape, const VecType<float> &_vec);
 
-    Array(const Array &other);
-    Array(Array &&other);
-    Array &operator=(const Array &other);
-    Array &operator=(Array &&other);
+  Array(const Array &other);
+  Array(Array &&other);
+  Array &operator=(const Array &other);
+  Array &operator=(Array &&other);
 
-    void reshape(const ShapeType &_shape);
-    void resize(const ShapeType &_shape);
+  void reshape(const ShapeType &_shape);
+  void resize(const ShapeType &_shape);
 
-    void zero();
+  void zero();
 
-    VecType &get_vec() { return vec; }
-    const VecType &get_vec() const { return vec; }
+  VecType<float> &get_vec() { return vec; }
+  const VecType<float> &get_vec() const { return vec; }
 
-    const ShapeType &get_shape() const { return shape; }
+  const ShapeType &get_shape() const { return shape; }
 
 private:
-    void check_shape();
+  void check_shape();
 
-    VecType vec;
-    ShapeType shape;
+  VecType<float> vec;
+  ShapeType shape;
 };
 
 // Helper functions, implemented in utils.cu.
 namespace utils {
 
 // Initializes Array object inside smart pointer
-void set_array_ptr(std::unique_ptr<Array> &ptr, const std::vector<int> &shape);
+void set_array_ptr(std::unique_ptr<Array> &ptr, const ShapeType &shape);
 
 // Since several functions in the training process require temporary Array
 // objects, and these functions may be called multiple times when the training
 // data is large, it's more efficient to cache these temporary Array objects
 // instead of creating new ones for each call.
-void set_array_cache(ArrayMap &map, std::string key,
-                     const std::vector<int> &shape);
+void set_array_cache(ArrayMap &map, std::string key, const ShapeType &shape);
 
 // Calculates rounded up decimal quotient of two integers
-int quotient_ceil(int a, int b);
+int div_ceil(int a, int b);
 
 } // namespace utils
 
@@ -128,29 +128,29 @@ void mean(Array *output, const Array *input, int axis, bool reduce = true);
 
 // Assertion macros
 #define CHECK_EQ(val1, val2, message)                                          \
-    do {                                                                       \
-        if ((val1) != (val2)) {                                                \
-            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
-                      << std::endl;                                            \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+  do {                                                                         \
+    if ((val1) != (val2)) {                                                    \
+      std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)           \
+                << std::endl;                                                  \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 
 #define CHECK_COND(statement, message)                                         \
-    do {                                                                       \
-        if (!(statement)) {                                                    \
-            std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)     \
-                      << std::endl;                                            \
-            exit(1);                                                           \
-        }                                                                      \
-    } while (0)
+  do {                                                                         \
+    if (!(statement)) {                                                        \
+      std::cerr << __FILE__ << "(" << __LINE__ << "): " << (message)           \
+                << std::endl;                                                  \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
 
 // Macro used to check for errors after a CUDA kernel call
 #define CUDA_CHECK(statement)                                                  \
-    do {                                                                       \
-        cudaError_t error = statement;                                         \
-        CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));               \
-    } while (0)
+  do {                                                                         \
+    cudaError_t error = statement;                                             \
+    CHECK_EQ(error, cudaSuccess, cudaGetErrorString(error));                   \
+  } while (0)
 
 #define CUDA_POST_KERNEL_CHECK CUDA_CHECK(cudaPeekAtLastError())
 
@@ -166,7 +166,7 @@ void mean(Array *output, const Array *input, int axis, bool reduce = true);
 // Reference:
 // https://developer.nvidia.com/blog/cuda-pro-tip-write-flexible-kernels-grid-stride-loops/
 #define CUDA_GRID_STRIDE_LOOP(i, n)                                            \
-    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                 \
-         i += gridDim.x * blockDim.x)
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n;                   \
+       i += gridDim.x * blockDim.x)
 
 } // namespace nnv2

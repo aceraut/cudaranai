@@ -11,37 +11,37 @@ namespace nnv2 {
 
 class Conv2D : public Layer {
 public:
-    Conv2D(int in_feats, int out_feats, int in_h, int in_w, int pad_h,
-           int pad_w, int filter_h, int filter_w, int stride_h, int stride_w,
-           const Initializer *init);
+  Conv2D(int in_feats, int out_feats, int in_h, int in_w, int pad_h, int pad_w,
+         int filter_h, int filter_w, int stride_h, int stride_w,
+         const Initializer *init);
 
-    std::vector<Param> get_parameters() override;
+  std::vector<Param> get_parameters() override;
 
-    void forward() override;
-    void backward() override;
+  void forward() override;
+  void backward() override;
 
 private:
-    int in_feats;
-    int out_feats;
+  int in_feats;
+  int out_feats;
 
-    int in_h;
-    int in_w;
-    int pad_h;
-    int pad_w;
-    int filter_h;
-    int filter_w;
-    int stride_h;
-    int stride_w;
+  int in_h;
+  int in_w;
+  int pad_h;
+  int pad_w;
+  int filter_h;
+  int filter_w;
+  int stride_h;
+  int stride_w;
 
-    std::unique_ptr<Array> filter;
-    std::unique_ptr<Array> filter_grad;
+  std::unique_ptr<Array> filter;
+  std::unique_ptr<Array> filter_grad;
 
-    std::unique_ptr<Array> bias;
-    std::unique_ptr<Array> bias_grad;
+  std::unique_ptr<Array> bias;
+  std::unique_ptr<Array> bias_grad;
 
-    std::unique_ptr<Array> col;
+  std::unique_ptr<Array> col;
 
-    ArrayMap cache;
+  ArrayMap cache;
 };
 
 void im2col(const Array *im, Array *col, int pad_h, int pad_w, int filter_h,
