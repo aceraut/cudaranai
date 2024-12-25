@@ -1,6 +1,7 @@
 #include "common.cuh"
 #include "mnist.cuh"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -46,9 +47,8 @@ static unsigned reverse_int(unsigned i) {
          (unsigned)ch4;
 }
 
-void Mnist::read_images(
-    std::vector<std::vector<float>> &output,
-    std::string filename) {
+void Mnist::read_images(std::vector<std::vector<float>> &output,
+                        std::string filename) {
   std::ifstream file(filename, std::ios::binary);
   if (file.is_open()) {
     unsigned magic_number = 0;
@@ -93,9 +93,8 @@ void Mnist::read_images(
   }
 }
 
-void Mnist::read_labels(
-    std::vector<unsigned char> &output,
-    std::string filename) {
+void Mnist::read_labels(std::vector<unsigned char> &output,
+                        std::string filename) {
   std::ifstream file(filename, std::ios::binary);
   if (file.is_open()) {
     unsigned magic_number = 0;
@@ -123,8 +122,8 @@ void Mnist::read_labels(
 
 void Mnist::rescale_images(std::vector<std::vector<float>> &images) {
   for (std::vector<float> &im : images) {
-    std::transform(
-        im.begin(), im.end(), im.begin(), [](float x) { return x / 255.0; });
+    std::transform(im.begin(), im.end(), im.begin(),
+                   [](float x) { return x / 255.0; });
   }
 }
 
@@ -148,9 +147,8 @@ void Mnist::standardize_images(std::vector<std::vector<float>> &images) {
 
   // Normalize images
   for (std::vector<float> &im : images) {
-    std::transform(im.begin(), im.end(), im.begin(), [&](float x) {
-      return (x - mean) / stddev;
-    });
+    std::transform(im.begin(), im.end(), im.begin(),
+                   [&](float x) { return (x - mean) / stddev; });
   }
 }
 

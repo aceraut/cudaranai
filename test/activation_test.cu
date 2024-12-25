@@ -24,8 +24,8 @@ void test_relu_backward() {
   Array input_grad({1, 1, 4, 3});
 
   relu_backward(&input_grad, &output_grad, &input);
-  check_equal_vecs(
-      input_grad.get_vec(), {0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12});
+  check_equal_vecs(input_grad.get_vec(),
+                   {0, 2, 0, 4, 0, 6, 0, 8, 0, 10, 0, 12});
 
   std::cout << "test_relu_backward: Passed" << std::endl;
 }

@@ -3,8 +3,6 @@
 #include "common.cuh"
 #include "layer.cuh"
 
-#include <vector>
-
 namespace nnv2 {
 
 class Dropout : public Layer {
@@ -26,16 +24,10 @@ private:
   VecType<char> mask;
 };
 
-void dropout_forward(
-    Array *output,
-    const Array *input,
-    float drop_rate,
-    VecType<char> &mask);
+void dropout_forward(Array *output, const Array *input, float drop_rate,
+                     VecType<char> &mask);
 
-void dropout_backward(
-    Array *input_grad,
-    const Array *output_grad,
-    float drop_rate,
-    const VecType<char> &mask);
+void dropout_backward(Array *input_grad, const Array *output_grad,
+                      float drop_rate, const VecType<char> &mask);
 
 } // namespace nnv2

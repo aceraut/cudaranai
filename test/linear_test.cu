@@ -36,8 +36,8 @@ void test_linear_backward(void) {
   Array weights_grad({3, 3});
   ArrayMap cache;
 
-  linear_backward(
-      &input_grad, &weights_grad, &input, &weights, &output_grad, cache);
+  linear_backward(&input_grad, &weights_grad, &input, &weights, &output_grad,
+                  cache);
 
   check_equal_vecs(input_grad.get_vec(), {5, 14, 23, 14, 50, 86});
   check_equal_vecs(weights_grad.get_vec(), {9, 12, 15, 12, 17, 22, 15, 22, 29});

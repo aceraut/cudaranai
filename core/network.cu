@@ -1,7 +1,6 @@
 #include "common.cuh"
 #include "network.cuh"
 
-#include <algorithm>
 #include <cfloat>
 #include <iostream>
 #include <utility>
@@ -115,12 +114,9 @@ void Network::test() {
 // probability in the output batch and the actual labels.
 // Returns number of accurate labels and total number of labels in a batch.
 // TODO: optimize max reduce op in the kernel (and other similar reduce ops)
-__global__ void top1_accuracy_kernel(
-    int size,
-    int *is_accurate,
-    const float *preds,
-    const float *y,
-    int label_stride) {
+__global__ void top1_accuracy_kernel(int size, int *is_accurate,
+                                     const float *preds, const float *y,
+                                     int label_stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     preds += idx * label_stride;
     y += idx * label_stride;
@@ -139,7 +135,7 @@ __global__ void top1_accuracy_kernel(
 
     // Find actual label
     for (int i = 0; i < label_stride; i++) {
-      if (y[i] == 1) {
+      if (y[i] == 1.0) {
         y_label = i;
         break;
       }

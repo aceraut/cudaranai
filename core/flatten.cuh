@@ -2,8 +2,6 @@
 
 #include "layer.cuh"
 
-#include <vector>
-
 namespace nnv2 {
 
 // Flatten layer is a drop-in layer that directly transforms previous layer's

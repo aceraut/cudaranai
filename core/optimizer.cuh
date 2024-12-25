@@ -58,11 +58,8 @@ private:
 
 class Adam : public Optimizer {
 public:
-  Adam(
-      float lr = 0.001,
-      float decay = 0.0,
-      float beta1 = 0.9,
-      float beta2 = 0.999)
+  Adam(float lr = 0.001, float decay = 0.0, float beta1 = 0.9,
+       float beta2 = 0.999)
       : Optimizer(), lr(lr), decay(decay), beta1(beta1), beta2(beta2) {}
 
   void add_parameters(std::vector<Param> params) override;

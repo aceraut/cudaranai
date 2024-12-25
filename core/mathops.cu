@@ -3,7 +3,6 @@
 #include <cmath>
 #include <functional>
 #include <numeric>
-#include <vector>
 
 #include <cuda_runtime.h>
 #include <thrust/functional.h>
@@ -18,37 +17,24 @@ void add(Array *output, const Array *input1, const Array *input2) {
   const VecType<float> &input2_vec = input2->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      input1_vec.size(),
-      input2_vec.size(),
-      "ops::add: size mismatch between inputs");
-  CHECK_EQ(
-      output_vec.size(),
-      input1_vec.size(),
-      "ops::add: size mismatched between input and output");
+  CHECK_EQ(input1_vec.size(), input2_vec.size(),
+           "ops::add: size mismatch between inputs");
+  CHECK_EQ(output_vec.size(), input1_vec.size(),
+           "ops::add: size mismatched between input and output");
 
-  thrust::transform(
-      input1_vec.begin(),
-      input1_vec.end(),
-      input2_vec.begin(),
-      output_vec.begin(),
-      thrust::plus<float>());
+  thrust::transform(input1_vec.begin(), input1_vec.end(), input2_vec.begin(),
+                    output_vec.begin(), thrust::plus<float>());
 }
 
 void add(Array *output, const Array *input, float value) {
   const VecType<float> &input_vec = input->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "ops::add: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "ops::add: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [value] __device__(float x) { return x + value; });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [value] __device__(float x) { return x + value; });
 }
 
 // Subtraction
@@ -57,37 +43,24 @@ void subtract(Array *output, const Array *input1, const Array *input2) {
   const VecType<float> &input2_vec = input2->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      input1_vec.size(),
-      input2_vec.size(),
-      "ops::subtract: size mismatch between inputs");
-  CHECK_EQ(
-      output_vec.size(),
-      input1_vec.size(),
-      "ops::subtract: size mismatch between input and outputs");
+  CHECK_EQ(input1_vec.size(), input2_vec.size(),
+           "ops::subtract: size mismatch between inputs");
+  CHECK_EQ(output_vec.size(), input1_vec.size(),
+           "ops::subtract: size mismatch between input and outputs");
 
-  thrust::transform(
-      input1_vec.begin(),
-      input1_vec.end(),
-      input2_vec.begin(),
-      output_vec.begin(),
-      thrust::minus<float>());
+  thrust::transform(input1_vec.begin(), input1_vec.end(), input2_vec.begin(),
+                    output_vec.begin(), thrust::minus<float>());
 }
 
 void subtract(Array *output, const Array *input, float value) {
   const VecType<float> &input_vec = input->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "ops::subtract: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "ops::subtract: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [value] __device__(float x) { return x - value; });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [value] __device__(float x) { return x - value; });
 }
 
 // Element-wise multiplication
@@ -96,37 +69,24 @@ void multiply(Array *output, const Array *input1, const Array *input2) {
   const VecType<float> &input2_vec = input2->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      input1_vec.size(),
-      input2_vec.size(),
-      "ops::multiply: size mismatch between inputs");
-  CHECK_EQ(
-      output_vec.size(),
-      input1_vec.size(),
-      "ops::multiply: size mismatch between input and outputs");
+  CHECK_EQ(input1_vec.size(), input2_vec.size(),
+           "ops::multiply: size mismatch between inputs");
+  CHECK_EQ(output_vec.size(), input1_vec.size(),
+           "ops::multiply: size mismatch between input and outputs");
 
-  thrust::transform(
-      input1_vec.begin(),
-      input1_vec.end(),
-      input2_vec.begin(),
-      output_vec.begin(),
-      thrust::multiplies<float>());
+  thrust::transform(input1_vec.begin(), input1_vec.end(), input2_vec.begin(),
+                    output_vec.begin(), thrust::multiplies<float>());
 }
 
 void multiply(Array *output, const Array *input, float value) {
   const VecType<float> &input_vec = input->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "ops::multiply: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "ops::multiply: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [value] __device__(float x) { return x * value; });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [value] __device__(float x) { return x * value; });
 }
 
 // Element-wise division
@@ -135,21 +95,13 @@ void divide(Array *output, const Array *input1, const Array *input2) {
   const VecType<float> &input2_vec = input2->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      input1_vec.size(),
-      input2_vec.size(),
-      "ops::divide: size mismatch between inputs");
-  CHECK_EQ(
-      output_vec.size(),
-      input1_vec.size(),
-      "ops::divide: size mismatch between input and outputs");
+  CHECK_EQ(input1_vec.size(), input2_vec.size(),
+           "ops::divide: size mismatch between inputs");
+  CHECK_EQ(output_vec.size(), input1_vec.size(),
+           "ops::divide: size mismatch between input and outputs");
 
-  thrust::transform(
-      input1_vec.begin(),
-      input1_vec.end(),
-      input2_vec.begin(),
-      output_vec.begin(),
-      thrust::divides<float>());
+  thrust::transform(input1_vec.begin(), input1_vec.end(), input2_vec.begin(),
+                    output_vec.begin(), thrust::divides<float>());
 }
 
 // Logarithm operation
@@ -157,16 +109,11 @@ void log(Array *output, const Array *input) {
   const VecType<float> &input_vec = input->get_vec();
   VecType<float> &output_vec = output->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "ops::log: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "ops::log: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [] __device__(float x) { return logf(x); });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [] __device__(float x) { return logf(x); });
 }
 
 // Matrix multiplication
@@ -183,16 +130,13 @@ constexpr int MMUL2_BK = 8;
 constexpr int MMUL2_TM = 8;
 constexpr int MMUL2_TN = 8;
 
-__global__ void matmul_kernel_v1(
-    float *output,
-    const float *input1,
-    const float *input2,
-    int m,
-    int n,
-    int k,
-    int broadcast) {
+__global__ void matmul_kernel_v1(float *output, const float *input1,
+                                 const float *input2, int m, int n, int k,
+                                 int broadcast) {
   __shared__ float tile1[MMUL1_BD][MMUL1_BD];
   __shared__ float tile2[MMUL1_BD][MMUL1_BD];
+
+  float thread_output = 0.0;
 
   // Calculate offsets of the matrices
   int batch_idx = blockIdx.z;
@@ -211,8 +155,6 @@ __global__ void matmul_kernel_v1(
 
   int x = bx * MMUL1_BD + tx;
   int y = by * MMUL1_BD + ty;
-
-  float thread_output = 0.0;
 
   for (int block_offset = 0; block_offset < k; block_offset += MMUL1_BD) {
     tile1[tx][ty] = (x < m && ty + block_offset < k)
@@ -234,14 +176,9 @@ __global__ void matmul_kernel_v1(
   }
 }
 
-__global__ void matmul_kernel_v2(
-    float *output,
-    const float *input1,
-    const float *input2,
-    int m,
-    int n,
-    int k,
-    int broadcast) {
+__global__ void matmul_kernel_v2(float *output, const float *input1,
+                                 const float *input2, int m, int n, int k,
+                                 int broadcast) {
   __shared__ float tile1[MMUL2_BM][MMUL2_BK];
   __shared__ float tile2[MMUL2_BK][MMUL2_BN];
 
@@ -344,36 +281,33 @@ __global__ void matmul_kernel_v2(
 // - Batch matrix multiplication between a batch A and a single matrix B.
 // - If `broadcast == 1`, B is the first input; if `broadcast == 2`, B is the
 // second input.
-void matmul(
-    Array *output,
-    const Array *input1,
-    const Array *input2,
-    int broadcast) {
+void matmul(Array *output, const Array *input1, const Array *input2,
+            int broadcast) {
   const ShapeType &output_shape = output->get_shape();
   const ShapeType &input1_shape = input1->get_shape();
   const ShapeType &input2_shape = input2->get_shape();
 
-  CHECK_COND(
-      input1_shape.size() > 1, "ops::matmul: shape error at first input");
-  CHECK_COND(
-      input2_shape.size() > 1, "ops::matmul: shape error at second input");
+  CHECK_COND(input1_shape.size() > 1,
+             "ops::matmul: shape error at first input");
+  CHECK_COND(input2_shape.size() > 1,
+             "ops::matmul: shape error at second input");
   CHECK_COND(output_shape.size() > 1, "ops::matmul: shape error at output");
 
   // Additional dimension check for broadcast case
   if (broadcast == 1) {
     CHECK_EQ(input1_shape.size(), 2, "ops::matmul: shape error at first input");
   } else if (broadcast == 2) {
-    CHECK_EQ(
-        input2_shape.size(), 2, "ops::matmul: shape error at second input");
+    CHECK_EQ(input2_shape.size(), 2,
+             "ops::matmul: shape error at second input");
   }
 
   // Calculate and validate batch size
-  int batch_size = std::accumulate(
-      output_shape.begin(), output_shape.end() - 2, 1, std::multiplies<int>());
-  int bs_input1 = std::accumulate(
-      input1_shape.begin(), input1_shape.end() - 2, 1, std::multiplies<int>());
-  int bs_input2 = std::accumulate(
-      input2_shape.begin(), input2_shape.end() - 2, 1, std::multiplies<int>());
+  int batch_size = std::accumulate(output_shape.begin(), output_shape.end() - 2,
+                                   1, std::multiplies<int>());
+  int bs_input1 = std::accumulate(input1_shape.begin(), input1_shape.end() - 2,
+                                  1, std::multiplies<int>());
+  int bs_input2 = std::accumulate(input2_shape.begin(), input2_shape.end() - 2,
+                                  1, std::multiplies<int>());
 
   if (broadcast != 1) {
     CHECK_EQ(batch_size, bs_input1, "ops::matmul: batch size mismatch");
@@ -391,14 +325,10 @@ void matmul(
   int output_w = *(output_shape.rbegin());
 
   CHECK_EQ(k, input2_h, "ops::matmul: shape mismatch between inputs");
-  CHECK_EQ(
-      m,
-      output_h,
-      "ops::matmul: shape mismatch between first input and output");
-  CHECK_EQ(
-      n,
-      output_w,
-      "ops::matmul: shape mismatch between second input and output");
+  CHECK_EQ(m, output_h,
+           "ops::matmul: shape mismatch between first input and output");
+  CHECK_EQ(n, output_w,
+           "ops::matmul: shape mismatch between second input and output");
 
   float *output_raw = RAW_PTR(output->get_vec());
   const float *input1_raw = RAW_PTR(input1->get_vec());
@@ -408,19 +338,19 @@ void matmul(
   // Kernel v1 works better on small to medium matrices, while v2 works better
   // on large matrices.
   if (m <= MMUL_LIM && n <= MMUL_LIM && k <= MMUL_LIM) {
-    dim3 grid_dim(
-        utils::div_ceil(n, MMUL1_BD), utils::div_ceil(m, MMUL1_BD), batch_size);
+    dim3 grid_dim(utils::div_ceil(n, MMUL1_BD), utils::div_ceil(m, MMUL1_BD),
+                  batch_size);
     dim3 block_dim(MMUL1_BD, MMUL1_BD);
 
-    matmul_kernel_v1<<<grid_dim, block_dim>>>(
-        output_raw, input1_raw, input2_raw, m, n, k, broadcast);
+    matmul_kernel_v1<<<grid_dim, block_dim>>>(output_raw, input1_raw,
+                                              input2_raw, m, n, k, broadcast);
   } else {
-    dim3 grid_dim(
-        utils::div_ceil(n, MMUL2_BN), utils::div_ceil(m, MMUL2_BM), batch_size);
+    dim3 grid_dim(utils::div_ceil(n, MMUL2_BN), utils::div_ceil(m, MMUL2_BM),
+                  batch_size);
     dim3 block_dim((MMUL2_BM * MMUL2_BN) / (MMUL2_TM * MMUL2_TN));
 
-    matmul_kernel_v2<<<grid_dim, block_dim>>>(
-        output_raw, input1_raw, input2_raw, m, n, k, broadcast);
+    matmul_kernel_v2<<<grid_dim, block_dim>>>(output_raw, input1_raw,
+                                              input2_raw, m, n, k, broadcast);
   }
   CUDA_POST_KERNEL_CHECK;
 }
@@ -429,8 +359,8 @@ void matmul(
 constexpr int XPOSE_BM = 8;
 constexpr int XPOSE_BN = 32;
 
-__global__ void
-transpose_kernel(float *output, const float *input, int m, int n) {
+__global__ void transpose_kernel(float *output, const float *input, int m,
+                                 int n) {
   __shared__ float tile[XPOSE_BN][XPOSE_BN + 1];
 
   int batch_idx = blockIdx.z;
@@ -486,10 +416,10 @@ void transpose(Array *output, const Array *input) {
   CHECK_COND(output_shape.size() > 1, "ops::transpose: shape error at output");
 
   // Calculate batch size and validate
-  int batch_size = std::accumulate(
-      output_shape.begin(), output_shape.end() - 2, 1, std::multiplies<int>());
-  int bs_input = std::accumulate(
-      input_shape.begin(), input_shape.end() - 2, 1, std::multiplies<int>());
+  int batch_size = std::accumulate(output_shape.begin(), output_shape.end() - 2,
+                                   1, std::multiplies<int>());
+  int bs_input = std::accumulate(input_shape.begin(), input_shape.end() - 2, 1,
+                                 std::multiplies<int>());
   CHECK_EQ(batch_size, bs_input, "ops::transpose: batch size mismatch");
 
   // Validate matrix dimension
@@ -498,16 +428,16 @@ void transpose(Array *output, const Array *input) {
   int output_h = *(output_shape.rbegin() + 1);
   int output_w = *(output_shape.rbegin());
 
-  CHECK_EQ(
-      m, output_w, "ops::transpose: shape mismatch between input and output");
-  CHECK_EQ(
-      n, output_h, "ops::transpose: shape mismatch between input and output");
+  CHECK_EQ(m, output_w,
+           "ops::transpose: shape mismatch between input and output");
+  CHECK_EQ(n, output_h,
+           "ops::transpose: shape mismatch between input and output");
 
   float *output_raw = RAW_PTR(output->get_vec());
   const float *input_raw = RAW_PTR(input->get_vec());
 
-  dim3 grid_dim(
-      utils::div_ceil(n, XPOSE_BN), utils::div_ceil(m, XPOSE_BN), batch_size);
+  dim3 grid_dim(utils::div_ceil(n, XPOSE_BN), utils::div_ceil(m, XPOSE_BN),
+                batch_size);
   dim3 block_dim(XPOSE_BN, XPOSE_BM);
 
   transpose_kernel<<<grid_dim, block_dim>>>(output_raw, input_raw, m, n);
@@ -515,12 +445,8 @@ void transpose(Array *output, const Array *input) {
 }
 
 // Sum reduction over a dimension (or axis)
-__global__ void sum_kernel(
-    int size,
-    float *output,
-    const float *input,
-    int axis_size,
-    int stride) {
+__global__ void sum_kernel(int size, float *output, const float *input,
+                           int axis_size, int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     int base = (idx / stride) * axis_size * stride + (idx % stride);
 
@@ -539,8 +465,8 @@ void sum(Array *output, const Array *input, int axis, bool reduce) {
   const ShapeType &input_shape = input->get_shape();
   const ShapeType &output_shape = output->get_shape();
 
-  CHECK_COND(
-      axis >= 0, "ops::sum: support for negative axis isn't implemented");
+  CHECK_COND(axis >= 0,
+             "ops::sum: support for negative axis isn't implemented");
   CHECK_COND(axis < input_shape.size(), "ops::sum: axis is out of bound");
 
   // Validate output shape
@@ -558,26 +484,19 @@ void sum(Array *output, const Array *input, int axis, bool reduce) {
 
   int output_size = output->get_vec().size();
   int axis_size = input_shape[axis];
-  int stride = std::accumulate(
-      input_shape.begin() + axis + 1,
-      input_shape.end(),
-      1,
-      std::multiplies<int>());
+  int stride = std::accumulate(input_shape.begin() + axis + 1,
+                               input_shape.end(), 1, std::multiplies<int>());
 
   int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
 
-  sum_kernel<<<grid_size, BLOCK_SIZE>>>(
-      output_size, output_raw, input_raw, axis_size, stride);
+  sum_kernel<<<grid_size, BLOCK_SIZE>>>(output_size, output_raw, input_raw,
+                                        axis_size, stride);
   CUDA_POST_KERNEL_CHECK;
 }
 
 // Mean reduction over a dimension (or axis)
-__global__ void mean_kernel(
-    int size,
-    float *output,
-    const float *input,
-    int axis_size,
-    int stride) {
+__global__ void mean_kernel(int size, float *output, const float *input,
+                            int axis_size, int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     int base = (idx / stride) * axis_size * stride + (idx % stride);
 
@@ -596,8 +515,8 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
   const ShapeType &input_shape = input->get_shape();
   const ShapeType &output_shape = output->get_shape();
 
-  CHECK_COND(
-      axis >= 0, "ops::mean: support for negative axis isn't implemented");
+  CHECK_COND(axis >= 0,
+             "ops::mean: support for negative axis isn't implemented");
   CHECK_COND(axis < input_shape.size(), "ops::mean: axis is out of bound");
 
   // Validate output shape
@@ -615,16 +534,13 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
 
   int output_size = output->get_vec().size();
   int axis_size = input_shape[axis];
-  int stride = std::accumulate(
-      input_shape.begin() + axis + 1,
-      input_shape.end(),
-      1,
-      std::multiplies<int>());
+  int stride = std::accumulate(input_shape.begin() + axis + 1,
+                               input_shape.end(), 1, std::multiplies<int>());
 
   int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
 
-  mean_kernel<<<grid_size, BLOCK_SIZE>>>(
-      output_size, output_raw, input_raw, axis_size, stride);
+  mean_kernel<<<grid_size, BLOCK_SIZE>>>(output_size, output_raw, input_raw,
+                                         axis_size, stride);
   CUDA_POST_KERNEL_CHECK;
 }
 

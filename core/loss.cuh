@@ -21,6 +21,7 @@ protected:
 class CrossEntropyLoss : public Loss {
 public:
   CrossEntropyLoss() : Loss() {}
+
   float calculate_loss(const Array *y) override;
   void backward() override;
 };
@@ -29,27 +30,20 @@ public:
 class NLLLoss : public Loss {
 public:
   NLLLoss() : Loss() {}
+
   float calculate_loss(const Array *y) override;
   void backward() override;
 };
 
 // Helper functions
-void cross_entropy_loss(
-    Array *output,
-    const Array *input,
-    const Array *y,
-    ArrayMap &cache);
+void cross_entropy_loss(Array *output, const Array *input, const Array *y,
+                        ArrayMap &cache);
 
-void cross_entropy_loss_backward(
-    Array *input_grad,
-    const Array *input,
-    const Array *y);
+void cross_entropy_loss_backward(Array *input_grad, const Array *input,
+                                 const Array *y);
 
-void nll_loss(
-    Array *output,
-    const Array *input,
-    const Array *y,
-    ArrayMap &cache);
+void nll_loss(Array *output, const Array *input, const Array *y,
+              ArrayMap &cache);
 
 void nll_loss_backward(Array *input_grad, const Array *y);
 

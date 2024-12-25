@@ -37,6 +37,4 @@ void test_dropout_forward() {
   std::cout << "test_dropout_forward: Passed" << std::endl;
 }
 
-int main() {
-  test_dropout_forward();
-}
+int main() { test_dropout_forward(); }

@@ -90,15 +90,13 @@ void test_func_matmul(void) {
 }
 
 void test_func_transpose(void) {
-  Array a(
-      {3, 2, 3},
-      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
+  Array a({3, 2, 3},
+          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17});
   Array res({3, 3, 2});
 
   ops::transpose(&res, &a);
-  check_equal_vecs(
-      res.get_vec(),
-      {0, 3, 1, 4, 2, 5, 6, 9, 7, 10, 8, 11, 12, 15, 13, 16, 14, 17});
+  check_equal_vecs(res.get_vec(), {0, 3, 1, 4, 2, 5, 6, 9, 7, 10, 8, 11, 12, 15,
+                                   13, 16, 14, 17});
 
   std::cout << "test_func_transpose: Passed" << std::endl;
 }

@@ -19,14 +19,10 @@ public:
     unsigned int seed =
         std::chrono::system_clock::now().time_since_epoch().count() % 1237;
 
-    std::shuffle(
-        train_images.begin(),
-        train_images.end(),
-        std::default_random_engine(seed));
-    std::shuffle(
-        train_labels.begin(),
-        train_labels.end(),
-        std::default_random_engine(seed));
+    std::shuffle(train_images.begin(), train_images.end(),
+                 std::default_random_engine(seed));
+    std::shuffle(train_labels.begin(), train_labels.end(),
+                 std::default_random_engine(seed));
   }
 
   int get_image_height() const { return h; }
@@ -48,10 +44,10 @@ public:
   }
 
 protected:
-  virtual void
-  read_images(std::vector<std::vector<float>> &data, std::string filename) = 0;
-  virtual void
-  read_labels(std::vector<unsigned char> &data, std::string filename) = 0;
+  virtual void read_images(std::vector<std::vector<float>> &data,
+                           std::string filename) = 0;
+  virtual void read_labels(std::vector<unsigned char> &data,
+                           std::string filename) = 0;
 
   std::string data_path;
 

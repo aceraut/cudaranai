@@ -21,8 +21,7 @@ constexpr float EPS = 1e-8;
 constexpr int BLOCK_SIZE = 256;
 
 // Type definitions
-template <class T>
-using VecType = thrust::device_vector<T>;
+template <class T> using VecType = thrust::device_vector<T>;
 
 using ShapeType = std::vector<int>;
 
@@ -38,8 +37,7 @@ using Param = std::pair<Array *, Array *>;
 // Array object similar to numpy array, implemented in array.cu
 class Array {
 public:
-  explicit Array(const ShapeType &_shape);
-  explicit Array(const ShapeType &_shape, float value);
+  explicit Array(const ShapeType &_shape, float value = 0.0);
   explicit Array(const ShapeType &_shape, const VecType<float> &_vec);
 
   Array(const Array &other);
@@ -110,11 +108,8 @@ void log(Array *output, const Array *input);
 // `broadcast` tells the function which input array needs replicating to match
 // with the other input's shape constraints. If broadcast is 0, no replication
 // is needed.
-void matmul(
-    Array *output,
-    const Array *input1,
-    const Array *input2,
-    int broadcast = 0);
+void matmul(Array *output, const Array *input1, const Array *input2,
+            int broadcast = 0);
 
 // Matrix transpose
 void transpose(Array *output, const Array *input);

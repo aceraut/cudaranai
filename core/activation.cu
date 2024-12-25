@@ -1,10 +1,8 @@
 #include "activation.cuh"
 #include "common.cuh"
 
-#include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include <numeric>
 
 #include <cuda_runtime.h>
 #include <thrust/copy.h>
@@ -16,41 +14,28 @@ void relu_forward(Array *output, const Array *input) {
   VecType<float> &output_vec = output->get_vec();
   const VecType<float> &input_vec = input->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "relu_forward: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "relu_forward: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [] __device__(float x) { return fmaxf(0.0, x); });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [] __device__(float x) { return fmaxf(x, 0.0); });
 }
 
-void relu_backward(
-    Array *input_grad,
-    const Array *output_grad,
-    const Array *input) {
+void relu_backward(Array *input_grad, const Array *output_grad,
+                   const Array *input) {
   VecType<float> &input_grad_vec = input_grad->get_vec();
   const VecType<float> &output_grad_vec = output_grad->get_vec();
   const VecType<float> &input_vec = input->get_vec();
 
-  CHECK_EQ(
-      input_grad_vec.size(),
-      output_grad_vec.size(),
-      "relu_backward: size mismatch between input grad and output grad");
-  CHECK_EQ(
-      input_grad_vec.size(),
-      input_vec.size(),
-      "relu_backward: size mismatch between input and its grad");
+  CHECK_EQ(input_grad_vec.size(), output_grad_vec.size(),
+           "relu_backward: size mismatch between input grad and output grad");
+  CHECK_EQ(input_grad_vec.size(), input_vec.size(),
+           "relu_backward: size mismatch between input and its grad");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_grad_vec.begin(),
-      input_grad_vec.begin(),
-      [] __device__(float x, float g) { return x > EPS ? g : 0; });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_grad_vec.begin(),
+                    input_grad_vec.begin(), [] __device__(float x, float g) {
+                      return x > 0.0 ? g : 0.0;
+                    });
 }
 
 void ReLU::forward() {
@@ -68,45 +53,30 @@ void sigmoid_forward(Array *output, const Array *input) {
   VecType<float> &output_vec = output->get_vec();
   const VecType<float> &input_vec = input->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "sigmoid_forward: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "sigmoid_forward: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [] __device__(float x) { return 1 / (1 + expf(-x)); });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [] __device__(float x) { return 1.0 / (1.0 + expf(-x)); });
 }
 
-void sigmoid_backward(
-    Array *input_grad,
-    const Array *output_grad,
-    const Array *input) {
+void sigmoid_backward(Array *input_grad, const Array *output_grad,
+                      const Array *input) {
   VecType<float> &input_grad_vec = input_grad->get_vec();
   const VecType<float> &output_grad_vec = output_grad->get_vec();
   const VecType<float> &input_vec = input->get_vec();
 
-  CHECK_EQ(
-      input_grad_vec.size(),
-      output_grad_vec.size(),
-      "sigmoid_backward: size mismatch between input grad and output "
-      "grad");
-  CHECK_EQ(
-      input_grad_vec.size(),
-      input_vec.size(),
-      "sigmoid_backward: size mismatch betwen input and its grad");
+  CHECK_EQ(input_grad_vec.size(), output_grad_vec.size(),
+           "sigmoid_backward: size mismatch between input grad and output "
+           "grad");
+  CHECK_EQ(input_grad_vec.size(), input_vec.size(),
+           "sigmoid_backward: size mismatch betwen input and its grad");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_grad_vec.begin(),
-      input_grad_vec.begin(),
-      [] __device__(float x, float g) {
-        float sigmoid = 1 / (1 + expf(-x));
-        return g * sigmoid * (1 - sigmoid);
-      });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_grad_vec.begin(),
+                    input_grad_vec.begin(), [] __device__(float x, float g) {
+                      float sigmoid = 1.0 / (1.0 + expf(-x));
+                      return g * sigmoid * (1.0 - sigmoid);
+                    });
 }
 
 void Sigmoid::forward() {
@@ -124,44 +94,29 @@ void tanh_forward(Array *output, const Array *input) {
   VecType<float> &output_vec = output->get_vec();
   const VecType<float> &input_vec = input->get_vec();
 
-  CHECK_EQ(
-      output_vec.size(),
-      input_vec.size(),
-      "tanh_forward: size mismatch between input and output");
+  CHECK_EQ(output_vec.size(), input_vec.size(),
+           "tanh_forward: size mismatch between input and output");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_vec.begin(),
-      [] __device__(float x) { return tanhf(x); });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_vec.begin(),
+                    [] __device__(float x) { return tanhf(x); });
 }
 
-void tanh_backward(
-    Array *input_grad,
-    const Array *output_grad,
-    const Array *input) {
+void tanh_backward(Array *input_grad, const Array *output_grad,
+                   const Array *input) {
   VecType<float> &input_grad_vec = input_grad->get_vec();
   const VecType<float> &output_grad_vec = output_grad->get_vec();
   const VecType<float> &input_vec = input->get_vec();
 
-  CHECK_EQ(
-      input_grad_vec.size(),
-      output_grad_vec.size(),
-      "tanh_backward: size mismatch between input grad and output grad");
-  CHECK_EQ(
-      input_grad_vec.size(),
-      input_vec.size(),
-      "tanh_backward: size mismatch between input and its grad");
+  CHECK_EQ(input_grad_vec.size(), output_grad_vec.size(),
+           "tanh_backward: size mismatch between input grad and output grad");
+  CHECK_EQ(input_grad_vec.size(), input_vec.size(),
+           "tanh_backward: size mismatch between input and its grad");
 
-  thrust::transform(
-      input_vec.begin(),
-      input_vec.end(),
-      output_grad_vec.begin(),
-      input_grad_vec.begin(),
-      [] __device__(float x, float g) {
-        float tanh = tanhf(x);
-        return g * (1 - tanh * tanh);
-      });
+  thrust::transform(input_vec.begin(), input_vec.end(), output_grad_vec.begin(),
+                    input_grad_vec.begin(), [] __device__(float x, float g) {
+                      float tanh = tanhf(x);
+                      return g * (1.0 - tanh * tanh);
+                    });
 }
 
 void Tanh::forward() {
@@ -180,11 +135,8 @@ void Tanh::backward() {
 // Softmax function is defined as: Softmax(X) = exp(X) / sum(exp(X)).
 // This implementation rescales the input vectors by subtracting the maxinum
 // value from every vector element to avoid overflow when calling exp().
-__global__ void softmax_forward_kernel(
-    int size,
-    float *output,
-    const float *input,
-    int stride) {
+__global__ void softmax_forward_kernel(int size, float *output,
+                                       const float *input, int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     input += idx * stride;
     output += idx * stride;
@@ -212,26 +164,23 @@ void softmax_forward(Array *output, const Array *input) {
   const ShapeType &output_shape = output->get_shape();
   const ShapeType &input_shape = input->get_shape();
 
-  CHECK_EQ(
-      output_shape.size(), 2, "softmax_forward: output is not 2 dimensional");
-  CHECK_EQ(
-      input_shape.size(), 2, "softmax_forward: input is not 2 dimensional");
-  CHECK_EQ(
-      output_shape,
-      input_shape,
-      "softmax_forward: shape mismatch between input and output");
+  CHECK_EQ(output_shape.size(), 2,
+           "softmax_forward: output is not 2 dimensional");
+  CHECK_EQ(input_shape.size(), 2,
+           "softmax_forward: input is not 2 dimensional");
+  CHECK_EQ(output_shape, input_shape,
+           "softmax_forward: shape mismatch between input and output");
 
   float *output_raw = RAW_PTR(output->get_vec());
   const float *input_raw = RAW_PTR(input->get_vec());
 
   int batch_size = input_shape[0];
-  int batch_stride = std::accumulate(
-      input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
+  int batch_stride = input_shape[1];
 
   int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
-  softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(
-      batch_size, output_raw, input_raw, batch_stride);
+  softmax_forward_kernel<<<grid_size, BLOCK_SIZE>>>(batch_size, output_raw,
+                                                    input_raw, batch_stride);
   CUDA_POST_KERNEL_CHECK;
 }
 
@@ -239,24 +188,17 @@ void softmax_backward(Array *input_grad, const Array *output_grad) {
   const ShapeType &input_grad_shape = input_grad->get_shape();
   const ShapeType &output_grad_shape = output_grad->get_shape();
 
-  CHECK_EQ(
-      input_grad_shape.size(),
-      2,
-      "softmax_backward: input_grad is not 2 dimensional");
-  CHECK_EQ(
-      output_grad_shape.size(),
-      2,
-      "softmax_backward: output_grad is not 2 dimensional");
+  CHECK_EQ(input_grad_shape.size(), 2,
+           "softmax_backward: input_grad is not 2 dimensional");
+  CHECK_EQ(output_grad_shape.size(), 2,
+           "softmax_backward: output_grad is not 2 dimensional");
 
   CHECK_EQ(
-      input_grad_shape,
-      output_grad_shape,
+      input_grad_shape, output_grad_shape,
       "softmax_backward: shape mismatch between output grad and input grad");
 
-  thrust::copy(
-      output_grad->get_vec().begin(),
-      output_grad->get_vec().end(),
-      input_grad->get_vec().begin());
+  thrust::copy(output_grad->get_vec().begin(), output_grad->get_vec().end(),
+               input_grad->get_vec().begin());
 }
 
 void Softmax::forward() {
@@ -276,11 +218,8 @@ void Softmax::backward() {
 //               = X - log(sum(exp(X)))
 // This implementation rescales the input vectors by subtracting the maxinum
 // value from every vector element to avoid overflow when calling exp().
-__global__ void log_softmax_forward_kernel(
-    int size,
-    float *output,
-    const float *input,
-    int stride) {
+__global__ void log_softmax_forward_kernel(int size, float *output,
+                                           const float *input, int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     input += idx * stride;
     output += idx * stride;
@@ -306,23 +245,18 @@ void log_softmax_forward(Array *output, const Array *input) {
   const ShapeType &output_shape = output->get_shape();
   const ShapeType &input_shape = input->get_shape();
 
-  CHECK_EQ(
-      output_shape.size(),
-      2,
-      "log_softmax_forward: output is not 2 dimensional");
-  CHECK_EQ(
-      input_shape.size(), 2, "log_softmax_forward: input is not 2 dimensional");
-  CHECK_EQ(
-      output_shape,
-      input_shape,
-      "log_softmax_forward: shape mismatch between input and output");
+  CHECK_EQ(output_shape.size(), 2,
+           "log_softmax_forward: output is not 2 dimensional");
+  CHECK_EQ(input_shape.size(), 2,
+           "log_softmax_forward: input is not 2 dimensional");
+  CHECK_EQ(output_shape, input_shape,
+           "log_softmax_forward: shape mismatch between input and output");
 
   const float *input_raw = RAW_PTR(input->get_vec());
   float *output_raw = RAW_PTR(output->get_vec());
 
   int batch_size = input_shape[0];
-  int batch_stride = std::accumulate(
-      input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
+  int batch_stride = input_shape[1];
 
   int grid_size = utils::div_ceil(batch_size, BLOCK_SIZE);
 
@@ -333,12 +267,9 @@ void log_softmax_forward(Array *output, const Array *input) {
 
 // Calculates loss gradient w.r.t. input of LogSoftmax layer using the formula
 // dL/dX = dL/dY - sum(dL/dY) * Softmax(X)
-__global__ void log_softmax_backward_kernel(
-    int size,
-    float *input_grad,
-    const float *output_grad,
-    const float *input,
-    int stride) {
+__global__ void log_softmax_backward_kernel(int size, float *input_grad,
+                                            const float *output_grad,
+                                            const float *input, int stride) {
   CUDA_GRID_STRIDE_LOOP(idx, size) {
     input_grad += idx * stride;
     output_grad += idx * stride;
@@ -366,40 +297,27 @@ __global__ void log_softmax_backward_kernel(
   }
 }
 
-void log_softmax_backward(
-    Array *input_grad,
-    const Array *output_grad,
-    const Array *input) {
+void log_softmax_backward(Array *input_grad, const Array *output_grad,
+                          const Array *input) {
   const ShapeType &input_grad_shape = input_grad->get_shape();
   const ShapeType &output_grad_shape = output_grad->get_shape();
   const ShapeType &input_shape = input->get_shape();
 
-  CHECK_EQ(
-      input_grad_shape.size(),
-      2,
-      "log_softmax_backward: input_grad is not 2 dimensional");
-  CHECK_EQ(
-      output_grad_shape.size(),
-      2,
-      "log_softmax_backward: output_grad is not 2 dimensional");
-  CHECK_EQ(
-      input_shape.size(),
-      2,
-      "log_softmax_backward: input is not 2 dimensional");
+  CHECK_EQ(input_grad_shape.size(), 2,
+           "log_softmax_backward: input_grad is not 2 dimensional");
+  CHECK_EQ(output_grad_shape.size(), 2,
+           "log_softmax_backward: output_grad is not 2 dimensional");
+  CHECK_EQ(input_shape.size(), 2,
+           "log_softmax_backward: input is not 2 dimensional");
 
-  CHECK_EQ(
-      input_grad_shape,
-      output_grad_shape,
-      "log_softmax_backward: shape mismatch between output grad and "
-      "input grad");
-  CHECK_EQ(
-      input_grad_shape,
-      input_shape,
-      "log_softmax_backward: shape mismatch between input and its grad");
+  CHECK_EQ(input_grad_shape, output_grad_shape,
+           "log_softmax_backward: shape mismatch between output grad and "
+           "input grad");
+  CHECK_EQ(input_grad_shape, input_shape,
+           "log_softmax_backward: shape mismatch between input and its grad");
 
   int batch_size = input_shape[0];
-  int batch_stride = std::accumulate(
-      input_shape.begin() + 1, input_shape.end(), 1, std::multiplies<int>());
+  int batch_stride = input_shape[1];
 
   float *input_grad_raw = RAW_PTR(input_grad->get_vec());
   const float *output_grad_raw = RAW_PTR(output_grad->get_vec());

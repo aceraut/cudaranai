@@ -26,15 +26,14 @@ int DataLoader::load_train_batch() {
   int im_stride = h * w;
   for (int i = start; i < end; i++) {
     // Train images
-    thrust::copy(
-        dataset->get_train_images()[i].begin(),
-        dataset->get_train_images()[i].end(),
-        output->get_vec().begin() + (i - start) * im_stride);
+    thrust::copy(dataset->get_train_images()[i].begin(),
+                 dataset->get_train_images()[i].end(),
+                 output->get_vec().begin() + (i - start) * im_stride);
 
     // Train labels, with one-hot encoding
     int one_hot_index =
         (i - start) * n_labels + (int)dataset->get_train_labels()[i];
-    output_labels->get_vec()[one_hot_index] = 1;
+    output_labels->get_vec()[one_hot_index] = 1.0;
   }
 
   return size;
@@ -59,15 +58,14 @@ int DataLoader::load_test_batch() {
   int im_stride = h * w;
   for (int i = start; i < end; i++) {
     // Test images
-    thrust::copy(
-        dataset->get_test_images()[i].begin(),
-        dataset->get_test_images()[i].end(),
-        output->get_vec().begin() + (i - start) * im_stride);
+    thrust::copy(dataset->get_test_images()[i].begin(),
+                 dataset->get_test_images()[i].end(),
+                 output->get_vec().begin() + (i - start) * im_stride);
 
     // Test labels, with one-hot encoding
     int one_hot_index =
         (i - start) * n_labels + (int)dataset->get_test_labels()[i];
-    output_labels->get_vec()[one_hot_index] = 1;
+    output_labels->get_vec()[one_hot_index] = 1.0;
   }
 
   return size;

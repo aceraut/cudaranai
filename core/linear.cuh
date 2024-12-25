@@ -33,13 +33,9 @@ private:
 void linear_forward(Array *output, const Array *input, const Array *filter);
 void linear_forward_bias(Array *output, const Array *bias);
 
-void linear_backward(
-    Array *input_grad,
-    Array *filter_grad,
-    const Array *input,
-    const Array *filter,
-    const Array *output_grad,
-    ArrayMap &cache);
+void linear_backward(Array *input_grad, Array *filter_grad, const Array *input,
+                     const Array *filter, const Array *output_grad,
+                     ArrayMap &cache);
 
 void linear_backward_bias(Array *bias_grad, const Array *output_grad);
 
