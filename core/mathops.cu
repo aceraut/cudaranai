@@ -119,7 +119,8 @@ void log(Array *output, const Array *input) {
 // Matrix multiplication
 
 // Dimension threshold to use the matmul kernel v1
-constexpr int MMUL_LIM = 512;
+constexpr int MMUL_DLIM = 512;
+constexpr int MMUL_KLIM = 640;
 // Block tile dimension in the matmul kernel v1
 constexpr int MMUL1_BD = 16;
 // Block tile dimension in the matmul kernel v2
@@ -337,7 +338,7 @@ void matmul(Array *output, const Array *input1, const Array *input2,
   // Select which kernel to launch based on the dimension.
   // Kernel v1 works better on small to medium matrices, while v2 works better
   // on large matrices.
-  if (m <= MMUL_LIM && n <= MMUL_LIM && k <= MMUL_LIM) {
+  if (m <= MMUL_DLIM && n <= MMUL_DLIM && k <= MMUL_KLIM) {
     dim3 grid_dim(utils::div_ceil(n, MMUL1_BD), utils::div_ceil(m, MMUL1_BD),
                   batch_size);
     dim3 block_dim(MMUL1_BD, MMUL1_BD);
