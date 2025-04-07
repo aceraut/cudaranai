@@ -48,7 +48,7 @@ void Array::reshape(const ShapeType &_shape) {
 
 void Array::resize(const ShapeType &_shape) {
   shape = _shape;
-  
+
   int size = 1;
   for (int i = 0; i < shape.size(); i++) {
     size *= shape[i];

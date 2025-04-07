@@ -445,17 +445,44 @@ void transpose(Array *output, const Array *input) {
   CUDA_POST_KERNEL_CHECK;
 }
 
-// Sum reduction over a dimension (or axis)
+// Common __device__ helper used in sum_kernel and mean_kernel
+__device__ void reduce_shared(float *sdata, int axis_size, int idx) {
+  // Parallel reduction in shared memory
+  for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
+    if (idx < s && idx + s < axis_size) {
+      sdata[idx] += sdata[idx + s];
+    }
+    __syncthreads();
+  }
+}
+
 __global__ void sum_kernel(int size, float *output, const float *input,
                            int axis_size, int stride) {
-  CUDA_GRID_STRIDE_LOOP(idx, size) {
-    int base = (idx / stride) * axis_size * stride + (idx % stride);
+  extern __shared__ float sdata[];
 
-    float value = 0;
-    for (int i = 0; i < axis_size; i++) {
-      value += input[base + i * stride];
-    }
-    output[idx] = value;
+  int idx = threadIdx.x; // axis_idx in the first phase
+  int v = blockIdx.x;
+  if (v >= size) {
+    return;
+  }
+
+  int base_idx = (v / stride) * axis_size * stride + (v % stride);
+
+  // Load elements in an axis
+  float input_val = 0;
+  for (int i = idx; i < axis_size; i += blockDim.x) {
+    int u = base_idx + i * stride;
+    input_val += input[u];
+  }
+  sdata[idx] = input_val;
+
+  __syncthreads();
+
+  // Perform sum reduction
+  reduce_shared(sdata, axis_size, idx);
+
+  if (idx == 0) {
+    output[v] = sdata[0];
   }
 }
 
@@ -488,24 +515,40 @@ void sum(Array *output, const Array *input, int axis, bool reduce) {
   int stride = std::accumulate(input_shape.begin() + axis + 1,
                                input_shape.end(), 1, std::multiplies<int>());
 
-  int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
-
-  sum_kernel<<<grid_size, BLOCK_SIZE>>>(output_size, output_raw, input_raw,
-                                        axis_size, stride);
+  int num_thread = std::min(axis_size, 1024);
+  int shared_mem_size = num_thread * sizeof(float);
+  sum_kernel<<<output_size, num_thread, shared_mem_size>>>(
+      output_size, output_raw, input_raw, axis_size, stride);
   CUDA_POST_KERNEL_CHECK;
 }
 
-// Mean reduction over a dimension (or axis)
 __global__ void mean_kernel(int size, float *output, const float *input,
-                            int axis_size, int stride) {
-  CUDA_GRID_STRIDE_LOOP(idx, size) {
-    int base = (idx / stride) * axis_size * stride + (idx % stride);
+                           int axis_size, int stride) {
+  extern __shared__ float sdata[];
 
-    float value = 0;
-    for (int i = 0; i < axis_size; i++) {
-      value += input[base + i * stride];
-    }
-    output[idx] = value / axis_size;
+  int idx = threadIdx.x; // axis_idx in the first phase
+  int v = blockIdx.x;
+  if (v >= size) {
+    return;
+  }
+
+  int base_idx = (v / stride) * axis_size * stride + (v % stride);
+
+  // Load elements in an axis
+  float input_val = 0;
+  for (int i = idx; i < axis_size; i += blockDim.x) {
+    int u = base_idx + i * stride;
+    input_val += input[u];
+  }
+  sdata[idx] = input_val;
+
+  __syncthreads();
+
+  // Perform sum reduction
+  reduce_shared(sdata, axis_size, idx);
+
+  if (idx == 0) {
+    output[v] = sdata[0] / (float)axis_size;
   }
 }
 
@@ -517,8 +560,8 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
   const ShapeType &output_shape = output->get_shape();
 
   CHECK_COND(axis >= 0,
-             "ops::mean: support for negative axis isn't implemented");
-  CHECK_COND(axis < input_shape.size(), "ops::mean: axis is out of bound");
+             "ops::sum: support for negative axis isn't implemented");
+  CHECK_COND(axis < input_shape.size(), "ops::sum: axis is out of bound");
 
   // Validate output shape
   // If `reduce` is true, remove the element at `axis` from output shape
@@ -528,7 +571,7 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
   } else {
     reduced_shape[axis] = 1;
   }
-  CHECK_EQ(reduced_shape, output_shape, "ops::mean: shape error at output");
+  CHECK_EQ(reduced_shape, output_shape, "ops::sum: shape error at output");
 
   float *output_raw = RAW_PTR(output->get_vec());
   const float *input_raw = RAW_PTR(input->get_vec());
@@ -538,10 +581,10 @@ void mean(Array *output, const Array *input, int axis, bool reduce) {
   int stride = std::accumulate(input_shape.begin() + axis + 1,
                                input_shape.end(), 1, std::multiplies<int>());
 
-  int grid_size = utils::div_ceil(output_size, BLOCK_SIZE);
-
-  mean_kernel<<<grid_size, BLOCK_SIZE>>>(output_size, output_raw, input_raw,
-                                         axis_size, stride);
+  int num_thread = std::min(axis_size, 1024);
+  int shared_mem_size = num_thread * sizeof(float);
+  mean_kernel<<<output_size, num_thread, shared_mem_size>>>(
+      output_size, output_raw, input_raw, axis_size, stride);
   CUDA_POST_KERNEL_CHECK;
 }
 

@@ -17,7 +17,12 @@ include_directories(${CORE_DIR})
 add_library(core_lib SHARED ${CORE_SOURCES})
 target_include_directories(core_lib PRIVATE ${CUDA_INCLUDE_DIRS})
 target_compile_options(core_lib PRIVATE
-                       $<$<COMPILE_LANGUAGE:CUDA>:--expt-extended-lambda>)
+    $<$<COMPILE_LANGUAGE:CUDA>:
+        --expt-extended-lambda
+        -arch=sm_75
+        -gencode=arch=compute_75,code=sm_75
+    >
+)
 
 if(BUILD_TESTS)
     # Collect all test files in the tests directory
@@ -28,6 +33,12 @@ if(BUILD_TESTS)
         get_filename_component(test_name ${test_source} NAME_WE)
         add_executable(${test_name} ${test_source})
         target_link_libraries(${test_name} PRIVATE core_lib)
+        target_compile_options(${test_name} PRIVATE
+            $<$<COMPILE_LANGUAGE:CUDA>:
+                -arch=sm_75
+                -gencode=arch=compute_75,code=sm_75
+            >
+        )
     endforeach()
 endif()
 
@@ -39,6 +50,12 @@ foreach(demo_source ${DEMO_SOURCES})
     get_filename_component(demo_name ${demo_source} NAME_WE)
     add_executable(${demo_name} ${demo_source})
     target_link_libraries(${demo_name} PRIVATE core_lib)
+    target_compile_options(${demo_name} PRIVATE
+        $<$<COMPILE_LANGUAGE:CUDA>:
+            -arch=sm_75
+            -gencode=arch=compute_75,code=sm_75
+        >
+    )
 endforeach()
 
 # Set the C++ standard to C++17 or higher
